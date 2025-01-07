@@ -375,13 +375,19 @@ _compat_init() {
     #         - positive self-exclusion condition added to every other
     #           Zlash-supported shell type test
 
+    # `setopt` is not a Bash builtin.
+    # `ZSH_EVAL_CONTEXT` and `ZSH_SUBSHELL` are readonly variables in Zsh.
+    # `.sh.version` is an invalid variable name in Zsh.
     _compat_test_am_zsh() {
-        if ! _compat_test_bash_witness \
-        && ! _compat_test_ksh93_witness \
-        &&   _compat_test_zsh_witness
+        # shellcheck disable=SC2034 # foo appears unused. Verify it or export it.
+        if ["x$(builtin whence -w builtin 2>/dev/null)" = "xbuiltin: builtin"]\
+        && ["x$(builtin whence -w setopt  2>/dev/null)" = "xsetopt: builtin" ]\
+        && ! ( eval '[ -n "${.sh.version}" ]'        ) >/dev/null 2>&1        \
+        && ! (    ZSH_EVAL_CONTEXT=""                ) >/dev/null 2>&1        \
+        && ! ( (( ZSH_SUBSHELL=0 , ZSH_SUBSHELL++ )) ) >/dev/null 2>&1
         then
             ZLASH_SHELL_TYP="zsh"
-            eval 'ZLASH_SHELL_VER=${(j:.:)${${(s:.:)ZSH_VERSION}[@]:0:2}}' \
+            eval 'ZLASH_SHELL_VER=${(j:.:)${${(s:.:)ZSH_VERSION}[@]:0:2}}'\
                 || return 1
             _compat_test_am_zsh() { builtin return 0; }
             builtin return 0
@@ -391,30 +397,35 @@ _compat_init() {
         fi
     }
 
+    # `shopt` is not a Zsh builtin.
+    # `BASH_VERSINFO` is a readonly variable in Bash.
+    # `.sh.version` is an invalid variable name in Bash.
     _compat_test_am_bash() {
-        if ! _compat_test_zsh_witness  \
-        && ! _compat_test_ksh93_witness \
-        &&   _compat_test_bash_witness
+        # shellcheck disable=SC2030,SC2031
+        if [ "x$(builtin type -t builtin 2>/dev/null)" = "xbuiltin" ]\
+        && [ "x$(builtin type -t shopt   2>/dev/null)" = "xbuiltin" ] \
+        && ! ( eval '[ -n "${.sh.version}" ]' ) > /dev/null 2>&1       \
+        && ! (              BASH_VERSINFO=(0) ) > /dev/null 2>&1
         then
             ZLASH_SHELL_TYP="bash"
-            ZLASH_SHELL_VER="${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}" \
+            eval 'ZLASH_SHELL_VER=${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}'\
                 || return 1
             # NOTE: These are not to be cleared during env scrubbing, if
             #       scrubbed subshell doesn't want to lose their "specialness",
             #       as per bash manpage.
             ZLASH_PROTECTED_VARS="$( (
-                IFS=":"
-                declare -a protected_vars
-                protected_vars=(
+            IFS=":"
+            typeset -a protected_vars
+            protected_vars=(
                     BASHPID       BASH_ALIASES  BASH_ARGV0      BASH_CMDS
                     BASH_COMMAND  BASH_SUBSHELL COMP_WORDBREAKS DIRSTACK
                     EPOCHREALTIME EPOCHSECONDS  FUNCNAME        GROUPS
                     LINENO        RANDOM        SECONDS         SRANDOM
                     BASH_COMPAT   BASH_XTRACEFD HOSTFILE        MAILCHECK
-                )
-                protected_vars+=("$ZLASH_PROTECTED_VARS")
-                echo "$protected_vars"
-            ) )" || return 1
+            )
+            protected_vars+=("$ZLASH_PROTECTED_VARS")
+            echo "$protected_vars"
+        ) )" || return 1
             _compat_test_am_bash() { builtin return 0; }
             builtin return 0
         else
@@ -426,14 +437,26 @@ _compat_init() {
     # `shopt` and `setopt` are not Ksh builtins.
     # `.sh.version` is an illegal veriable name in Bash and Zsh.
     _compat_test_am_ksh93() {
-        if ! _compat_test_bash_witness \
-        && ! _compat_test_zsh_witness   \
-        &&   _compat_test_ksh93_witness
+        if   [ "x$(whence -t whence 2>/dev/null)" = "xbuiltin" ]\
+        && ! [ "x$(whence -t shopt  2>/dev/null)" = "xbuiltin" ] \
+        && ! [ "x$(whence -t setopt 2>/dev/null)" = "xbuiltin" ]  \
+        &&   (           ZSH_EVAL_CONTEXT=""  ) > /dev/null 2>&1   \
+        &&   (              BASH_VERSINFO=(0) ) > /dev/null 2>&1    \
+        &&   ( eval '[ -n "${.sh.version}" ]' ) > /dev/null 2>&1
         then
-            ZLASH_SHELL_TYP="ksh93"
-            ZLASH_SHELL_VER="93.0"
-            _compat_test_am_ksh93() { return 0; }
-            return 0
+            # Test for some ksh93 features
+            # TODO: check if `.sh.version` is already excluding older Ksh
+            if ( eval '[ "$((sqrt(9)))" = "3" ]'              ) 2>/dev/null \
+            && ( eval 'v=( x="X" y="Y" ); [ "${v.y}" = "Y" ]' ) 2>/dev/null
+            then
+                ZLASH_SHELL_TYP="ksh93"
+                ZLASH_SHELL_VER="0.0"
+                _compat_test_am_ksh93() { return 0; }
+                return 0
+            else
+                _compat_test_am_ksh93() { return 1; }
+                return 1
+            fi
         else
             _compat_test_am_ksh93() { return 1; }
             return 1
