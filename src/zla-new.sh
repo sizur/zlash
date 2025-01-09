@@ -275,7 +275,7 @@ _compat_init() {
     # Do not clear these environment variables when performing environment
     # scrubbing by default. A string containing variable names separated by
     # colons (`:`).
-    : ${ZLASH_PROTECTED_VARS:="HOME"}
+    : ${ZLASH_PROTECTED__ZLASH_VARS:="HOME"}
 
     # Optional Tools. A tool executable may have different names. Possibilities
     # are separated by colons (`:`).
@@ -366,30 +366,503 @@ _compat_init() {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #### 3.1.  Shell Capabilities Tests
 #
-# `_compat_test_cap_`-prefixed, all POSIX-compliant no-argument silent static
-# evalualtion tests as empirical witnesses of various shell capabilities.
+# `zlash_cap_`-prefixed, all POSIX-compliant no-argument silent static
+# evalualtion tests as non-exhaustive empirical witnesses of various shell
+# capabilities. Style of these is very different form the main definitions,
+# since this needs to be very compatible and defensive.
 #
-# Tests define _ZLASH_SHELL_CAP_DEPS with colon-separated (`:`) required
+# Each tests defines ZLASH_CAPREQS with space-separated required
 # capability names, so minimal failing dependent capability can be traced on
 # capability test failure.
 #
-# Capability names are test function names with `_compat_test_cap_` prefix
+# Each test defines ZLASH_CAPDSC as a short description or example of
+# the capability, which can be used when reporting on capability.
+#
+# Capability names are test function names with `zlash_cap_` prefix
 # stripped.
 #
-# NOTE: ASSUMPTION: we are excluding "POSIX-compliant" shells that weren't
-#                   updated since late 1980s. If we have function definitions,
-#                   we also have case-esac pattern-matching.
+# We are excluding "POSIX-compliant" shells that weren't updated since late
+# 1980s. If we have function definitions, we also have basic parameter
+# expansions, basic string and file testing, POSIX-required builtins (., :,
+# break, continue, eval, exec, exit, export, readonly, return, set, shift, trap,
+# unset) and utilities (alias, echo, printf, times, type, ulimit, etc...),
+# redirections, compound commands like if, case-patterns, for loops, command
+# lists, status negation, pipelines, groups, subshells.
+#
+# NOTE: `_unsafe_`-prefixed functions should be called with controlled or
+#       sanitized arguments.
+#
 
-    # Contains colon-separated (`:`) capability names determined the current
-    # shell has (including environment).
-    : ${ZLASH_SHELL_CAPS:=""}
+##### 3.1.1. Subshell Behavior
+
+    # Reset OUT reporting variables. (also a capabilities testing observability
+    # point)
+    zlash_captest_fixture() {
+
+        # A short description and/or example snippet of capability.
+        ZLASH_CAPDESC=''
+
+        # Capability dependencies (space separated) for finding a more
+        # fundamental failing capability on failure.
+        ZLASH_CAPREQS=''
+
+        # Capability provisions on success (space separated).
+        # TODO: explain format and use.
+        ZLASH_CAPFOR=''
+    }
+
+    # Subshell execution environment should isolated from enclosing execution
+    # environment.
+    zlash_cap_sh_subsh_env() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='subshell execution environment isolation'
+
+        # Subshell to not pollute execution environment with temporary variables
+        # and functions before we know our capabilities.
+        if (
+            # if _ZLASH_VAR has been set as readonly, our tests are invalid, so
+            # report no capability. This early, we don't yet know our
+            # capabilities, so we should attempt to create a non-clashing
+            # variable name dnamically. Similarly, some shells can set functions
+            # readonly, preventing redefinition.
+            _ZLASH_VAR=""                               \
+                && eval '_zlash_func() { _ZLASH_VAR="OUTER"; }'\
+                && [ "${_ZLASH_VAR:-}" = "" ]             \
+                && _zlash_func                                   \
+                && [ "${_ZLASH_VAR:-}" = "OUTER" ]          \
+                && _ZLASH_VAR=""                             \
+                && (
+                    # Subshell should inherit outer execution environment.
+                    [ "${_ZLASH_VAR:-}" = "" ] \
+                        && _zlash_func                \
+                        || return 1
+
+                    # Redefine function
+                    _zlash_func() { _ZLASH_VAR="INNER"; }
+
+                    # Last call should have been of the outer function, then
+                    # test the overriden, inner call.
+                    [ "${_ZLASH_VAR:-}" = "OUTER" ]    \
+                        && _zlash_func                        \
+                        && [ "${_ZLASH_VAR:-}" = "INNER" ]
+                )\
+                && [ "${_ZLASH_VAR:-}" = "" ]  \
+                && _zlash_func                        \
+                && [ "${_ZLASH_VAR:-}" = "OUTER" ]
+        ); then
+            ZLASH_CAP_SH_SUBSH_ENV=true
+        else
+            ZLASH_CAP_SH_SUBSH_ENV=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Shells may or may not fork (to rely on OS) to achieve isolated execution
+    # environment from the enclosing execution environment. This tests for the
+    # correct behavior of the (possibly counter-intuitive) top-level return in a
+    # subshell: it should exit subshell setting status of subshell to the passed
+    # value, not exit the enclosing function.
+    zlash_cap_sh_subsh_ret() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='correct subshell return behavior'
+
+        # Status of the last command in subshell is the status of the subshell,
+        # same as with functions, which here is the compound logic command.
+        if (
+            # Top-level return in a subshell should not return from enclosing
+            # function. The `||:;` construct ensures a preceeding command, if
+            # failed, will not short-circuit the function.
+            _false()    { ( return 0; ) ||:; return 1; }
+            _true()     { ( return 1; ) ||:; return 0; }
+
+            # Top-level return in a subshell should exit subshell with its
+            # value as status.
+            _is_false() { ( return 1 ||:; exit 0; ); }
+            _is_true()  { ( return 0 ||:; exit 1; ); }
+
+            _true && ! _false && ! _is_false && _is_true
+        ); then
+            ZLASH_CAP_SH_SUBSH_RET=true
+        else
+            ZLASH_CAP_SH_SUBSH_RET=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+##### 3.1.2. True/False Exit Status Logic
+#
+
+    zlash_cap_sh_truefalse() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='false || true  # exit status logic'
+
+        if true && ! false; then
+            ZLASH_CAP_SH_TRUEFALSE=true
+        else
+            ZLASH_CAP_SH_TRUEFALSE=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Simple enough to directly provide the missing utilities.
+    if ! zlash_cap_sh_truefalse; then
+        true()  { return 0; }
+        false() { return 1; }
+    fi
+
+##### 3.1.2. Unset Behavior
+#
+# see: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#unset
+#
+    # Unsafe means arguments must be either controlled or sanitized.
+    # Used to test variations of variable removal.
+    _unsafe_zlash_cap_sh_rm_var() {
+        (
+            _ZLASH_VAR='OK'                    \
+                && [ "${_ZLASH_VAR:-}" = 'OK' ] \
+                && eval "$1 _ZLASH_VAR"          \
+                && [ "${_ZLASH_VAR:-}" = '' ]
+        )
+    }
+
+    # `unset` variable delition capability.
+    zlash_cap_sh_unset() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='unset VAR  # removes variable `VAR`'
+        ZLASH_CAPFOR='rm_var_cmd'
+
+        if _unsafe_zlash_cap_sh_rm_var 'unset'; then
+            ZLASH_CAP_SH_UNSET=true
+        else
+            ZLASH_CAP_SH_UNSET=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # `unset -v` explicit variable deletion capability.
+    zlash_cap_sh_unset_v() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='unset -v VAR  # removes variable `VAR`'
+        ZLASH_CAPFOR='rm_var_cmd'
+
+        if _unsafe_zlash_cap_sh_rm_var 'unset -v'; then
+            ZLASH_CAP_SH_UNSET_V=true
+        else
+            ZLASH_CAP_SH_UNSET_V=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Provides $ZLASH_CMD_RM_VAR on success.
+    zlash_cap_cmd_rm_var() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='$ZLASH_CMD_RM_VAR VAR  # remove variable VAR'
+
+        # Prefer the explicit variants.
+        if ${ZLASH_CAP_SH_UNSET_V:-false} \
+        ||   zlash_cap_sh_unset_v
+        then
+            ZLASH_CMD_RM_VAR='unset -v'
+        elif ${ZLASH_CAP_SH_UNSET:-false} \
+        ||     zlash_cap_sh_unset
+        then
+            ZLASH_CMD_RM_VAR='unset'
+        else
+            # We could do something like:
+            #
+            #   _unsafe_zlash_rm_var() { eval "\$${1}=''"; }
+            #   ZLASH_CMD_RM_VAR='_unsafe_zlash_rm_var'
+            #
+            # but failure still would need to be reported, and still more cap
+            # testing would need to be tested, like scoping corner cases.
+            ZLASH_CAP_CMD_RM_VAR=false
+            return 1
+        fi
+        ZLASH_CAP_CMD_RM_VAR=true
+    }
+
+    # Function deleting. Succeed only if deleted function call fails AND call
+    # did not have deleted function's effect.
+    zlash_cap_rm_fun_unset_f() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='unset -f fun  # removes function `fun`'
+
+        if (
+            _ZLASH_VAR=""                            \
+                && eval '_zlash_func() { _ZLASH_VAR="OK"; }'\
+                && [ "${_ZLASH_VAR:-}" = "" ]          \
+                && _zlash_func                                \
+                && [ "${_ZLASH_VAR:-}" = "OK" ]          \
+                && _ZLASH_VAR=""                          \
+                && [ "${_ZLASH_VAR:-}" = "" ]              \
+                && eval 'unset -f _zlash_func'                    \
+                && ! eval '_zlash_func'                            \
+                && [ "${_ZLASH_VAR:-}" = "" ]
+        ); then
+            ZLASH_CAP_RM_FUN_UNSET_F=true
+        else
+            ZLASH_CAP_RM_FUN_UNSET_F=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Unset NAME removes function NAME if variable NAME is unset.
+    # POSIX specifies this behavior as undefined.
+    zlash_cap_rm_fun_unset() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='unset name  # removes variable or function `name`'
+
+        if (
+            # Variable and function with same name
+            _zlash_name=""                                 \
+                && eval '_zlah_name() { _zlash_name="OK"; }'\
+                && [ "${_zlash_name:-}" = "" ]               \
+                && _zlash_name                                \
+                && [ "${_zlash_name:-}" = "OK" ]               \
+                && eval 'unset _zlash_name'                     \
+                && [ "${_zlash_name:-}" = "" ]                   \
+                && eval '_zlash_name'                             \
+                && [ "${_zlash_name:-}" = "OK" ]                   \
+                && unset _zlash_name                                \
+                && eval 'unset _zlash_name'                          \
+                && [ "${_zlash_name:-}" = "" ]                        \
+                && eval '_zlash_name'                                  \
+                && [ "${_zlash_name:-}" = "" ]
+        ); then
+            ZLASH_CAP_RM_FUN_UNSET=true
+        else
+            ZLASH_CAP_RM_FUN_UNSET=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Provides $ZLASH_CMD_RM_FUN
+    zlash_cap_cmd_rm_fun() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='$ZLASH_CMD_RM_FUN fun  # removes function `fun`'
+
+        # Prefer explicit.
+        if [ "${ZLASH_CAP_RM_FUN_UNSET_F:-}" = 'true' ] \
+        || zlash_cap_rm_fun_unset_f
+        then
+            ZLASH_CMD_RM_FUN='unset -f'
+        elif [ "${ZLASH_CAP_RM_FUN_UNSET:-}" = 'true' ] \
+        || zlash_cap_rm_fun_unset
+        then
+            ZLASH_CMD_RM_FUN='unset'
+        else
+            ZLASH_CAP_CMD_RM_FUN=false
+            return 1
+        fi
+        ZLASH_CAP_CMD_RM_FUN=true
+    } >/dev/null 2>&1
+
+##### 3.1.3. Local Variables?
+
+    _unsafe_zlash_cap_sh_local_var() {
+        ZLASH_CAPDSC="$1 VAR  # set VAR as function-local variable"
+        (
+            _ZLASH_VAR='OUTER' || return 1
+            _zlash_func() {
+                [ "$_ZLASH_VAR" = 'OUTER' ]   \
+                    && eval "$1 _ZLASH_VAR"    \
+                    && _ZLASH_VAR='INNER'       \
+                    && [ "$_ZLASH_VAR" = 'INNER' ]
+            }
+            _zlash_func \
+                && [ "$_ZLASH_VAR" = 'OUTER' ]
+        )
+    }
+
+    zlash_cap_sh_local() {
+        zlash_captest_fixture
+        if _unsafe_zlash_cap_local 'local'; then
+            ZLASH_CAP_SH_LOCAL=true
+        else
+            ZLASH_CAP_SH_LOCAL=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    zlash_cap_sh_local_declare() {
+        zlash_captest_fixture
+        if _unsafe_zlash_cap_local 'declare'; then
+            ZLASH_CAP_SH_LOCAL_DECLARE=true
+        else
+            ZLASH_CAP_SH_LOCAL_DECLARE=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    zlash_cap_sh_local_typeset() {
+        zlash_captest_fixture
+        if _unsafe_zlash_cap_local 'typeset'; then
+            ZLASH_CAP_SH_LOCAL_TYPESET=true
+        else
+            ZLASH_CAP_SH_LOCAL_TYPESET=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Provides $ZLASH_CMD_LOCAL_VAR on success.
+    zlash_cap_cmd_local_var() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='$ZLASH_CMD_LOCAL_VAR var  # declare function-local `var`'
+
+        # `local` is most specific. `typeset` is most portable.
+        if ${ZLASH_CAP_SH_LOCAL:-false} \
+        ||   zlash_cap_sh_local
+        then
+            ZLASH_CMD_LOCAL_VAR='local'
+        elif ${ZLASH_CAP_SH_LOCAL_DECLARE:-false} \
+        ||     zlash_cap_sh_local_declare
+        then
+            ZLASH_CMD_LOCAL_VAR='declare'
+        elif ${ZLASH_CAP_SH_LOCAL_TYPESET:-false} \
+        ||     zlash_cap_sh_local_typeset
+        then
+            ZLASH_CMD_LOCAL_VAR='typeset'
+        else
+            ZLASH_CAP_CMD_LOCAL_VAR=false
+            return 1
+        fi
+        ZLASH_CAP_CMD_LOCAL_VAR=true
+    } >/dev/null 2>&1
+
+##### 3.1.4. Alternative Function Definition Synatx?
+#
+
+    zlash_cap_sh_altfundef() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='function name {...}'
+
+        if (
+            _ZLASH_VAR='ONE'                                        \
+                && eval 'function _zlash_func { _ZLASH_VAR="TWO"; }' \
+                && [ "${_ZLASH_VAR:-}" = 'ONE' ]                      \
+                && _zlash_func                                         \
+                && [ "${_ZLASH_VAR:-}" = 'TWO' ]
+        ); then
+            ZLASH_CAP_SH_ALTFUNDEF=true
+        else
+            ZLASH_CAP_SH_ALTFUNDEF=false
+            return 1
+        fi
+    }
+
+    zlash_cap_sh_mixfundef() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='function name () {...}'
+
+        if (
+            _ZLASH_VAR='ONE'                                           \
+                && eval 'function _zlash_func () { _ZLASH_VAR="TWO"; }' \
+                && [ "${_ZLASH_VAR:-}" = 'ONE' ]                         \
+                && _zlash_func                                            \
+                && [ "${_ZLASH_VAR:-}" = 'TWO' ]
+        ); then
+            ZLASH_CAP_SH_MIXFUNDEF=true
+        else
+            ZLASH_CAP_SH_MIXFUNDEF=false
+            return 1
+        fi
+    }
+
+##### 3.1.5. Global or Non-local Variables?
+#
+
+    _unsafe_zlash_cap_global_var() {
+        ZLASH_CAPREQS='cmd_local_var'
+
+        ${ZLASH_CAP_CMD_LOCAL_VAR:-false} \
+            || zlash_cap_cmd_local_var     \
+            && (
+                _ZLASH_VAR='OUTER' || return 1
+                _zlash_func() {
+                    [ "$_ZLASH_VAR" = 'OUTER' ]         || return 1
+                    eval "$_ZLASH_LOCAL_CMD _ZLASH_VAR" || return 1
+                    _ZLASH_VAR='INNER'                  || return 1
+                    [ "$_ZLASH_VAR" = 'INNER' ]         || return 1
+
+                    # Set the outer value
+                    eval 'typeset -g _ZLASH_VAR="NEW"' || return 1
+
+                    # Inner value was not affected
+                    [ "$_ZLASH_VAR" = 'INNER' ]  || return 1
+                }
+
+                [ "$_ZLASH_VAR" = 'OUTER' ]  || return 1
+                _zlash_func || return 1
+
+                # Outer value was changed
+                [ "$_ZLASH_VAR" = 'NEW' ]
+            )
+    }
+
+
+##### 3.1.4 Indexed Arrays?
+
+    _unsafe_test_cap_ixarr() {
+        ZLASH_CAPDSC="$1 VAR  # set VAR as indexed array"
+        ZLASH_CAPREQS=""
+        (
+            eval "$1 _ZLASH_VAR"              || return 1
+            eval '_ZLASH_VAR=(one two three)' || return 1
+
+            # ${_ZLASH_VAR[*]} and (in scalar context) ${_ZLASH_VAR[@]}
+            # concatenate array with the first character of IFS as the
+            # separator.
+            IFS=' ' || return 1
+            eval '[ "${_ZLASH_VAR[*]}" = "one two three" ]' || return 1
+            eval '[ "${_ZLASH_VAR[@]}" = "one two three" ]' || return 1
+
+            # Number of elements.
+            eval '[ "${#_ZLASH_VAR[@]}" -eq 3 ]' || return 1
+
+            # Subscript `1` is ether first or second element.
+            eval  '
+                [ "${_ZLASH_VAR[1]}" = "one" ] || \
+                [ "${_ZLASH_VAR[1]}" = "two" ]
+            ' || return 1
+
+            # Appending elements
+            eval '_ZLASH_VAR+=(four five)' || return 1
+            [ "${#_ZLASH_VAR[@]}" -eq 5 ]  || return 1
+            [ "${_ZLASH_VAR[*]}" = 'one two three four five' ]
+
+            # Removing elements
+            _unsafe_unset_v '_ZLASH_VAR[1]' || return 1
+            [ "${#_ZLASH_VAR[@]}" -eq 4 ]   || return 1
+            [ "${_ZLASH_VAR[*]}" = 'one three four five' ]     \
+                || [ "${_ZLASH_VAR[*]}" = 'two three four five' ]
+        )
+    }
+
+    # `delcare -a ARR` sets zero-based indexed array attribute on variable ARR.
+    zlash_cap_ixarr_declare_a() {
+        _unsafe_test_cap_ixarr 'declare -a'
+    } >/dev/null 2>&1
+
+    # `delcare -a ARR` sets zero-based indexed array attribute on variable ARR.
+    zlash_cap_ixarr_typeset_a() {
+        _unsafe_test_cap_ixarr 'typeset -a'
+    } >/dev/null 2>&1
+
+    zlash_cap_ixarr() {
+        zlash_cap_ixarr_declare_a \
+            || zlash_cap_ixarr_typeset_a
+    } >/dev/null 2>&1
+
+    if zlash_cap_ixarr_declare_a; then
+        :
+    fi
 
 ##### 3.1.1 How does shell report type of a command?
 
     # Bash and Ksh variants
-    _compat_test_cap_builtin_type_ta() {
-        _ZLASH_SHELL_CAP_DESC='type -ta return # *builtin*'
-        _ZLASH_SHELL_CAP_DEPS=""
+    zlash_cap_builtin_type_ta() {
+        ZLASH_CAPDSC='type -ta return # *builtin*'
+        ZLASH_CAPREQS=""
         if eval 'case "$(type -ta return)" in
                     *builtin*) return 0;;
                     *) return 1;;
@@ -403,9 +876,9 @@ _compat_init() {
     } >/dev/null 2>&1
 
     # Zsh
-    _compat_test_cap_builtin_whence_wa() {
-        _ZLASH_SHELL_CAP_DESC='whence -wa return # *builtin*'
-        _ZLASH_SHELL_CAP_DEPS=""
+    zlash_cap_builtin_whence_wa() {
+        ZLASH_CAPDSC='whence -wa return # *builtin*'
+        ZLASH_CAPREQS=""
         if eval 'case "$(whence -wa return)" in
                     *builtin*) return 0;;
                     *) return 1;;
@@ -418,18 +891,30 @@ _compat_init() {
         return 1
     } >/dev/null 2>&1
 
+    zlash_cap_builtin_lists_builtins() {
+        ZLASH_CAPDSC='builtin lists builtins'
+        ZLASH_CAPREQS=""
+        (
+            eval 'OUT=$(builtin)' || return 1
+            case "$OUT" in
+                *return*) return 0;;
+            esac
+            return 1
+        )
+    } >/dev/null 2>&1
+
     # NOTE: Not a general version. Just an initialization helper, as argument is
     #       not sanitized, so must be controlled.
-    _unsecure_test_word_isa() {
-        if _compat_test_cap_builtin_type_ta; then
-            _unsecure_test_word_isa() {
+    _unsefe_test_word_isa() {
+        if zlash_cap_builtin_type_ta; then
+            _unsefe_test_word_isa() {
                 case "$(type -ta "$1")" in
                     *"$2"*) return 0;;
                     *) return 1;;
                 esac
             }
-        elif _compat_test_cap_builtin_whence_wa; then
-            _unsecure_test_word_isa() {
+        elif zlash_cap_builtin_whence_wa; then
+            _unsefe_test_word_isa() {
                 case "$(whence -wa "$1")" in
                     *"$2"*) return 0;;
                     *) return 1;;
@@ -441,72 +926,189 @@ _compat_init() {
             #       effective, while allowing path of executables in output
             #       enables pattern injection, (like containing `builtin` as a
             #       path substring) making test unreliable.
-            _unsecure_test_word_isa() {
+            _unsefe_test_word_isa() {
                 echo 'ERROR: No "builtin_type_ta" or "builtin_whence_wa"' \
                      'capabilities!' >/dev/stderr
                 return 1
             }
         fi
-        _unsecure_test_word_isa "$1" "$2"
+        _unsefe_test_word_isa "$1" "$2"
     }
 
-    _compat_test_cap_keyword_is_keyword() {
-        _ZLASH_SHELL_CAP_DESC='keywords like "if" are "keyword"'
-        _ZLASH_SHELL_CAP_DEPS=""
-        _unsecure_test_word_isa if keyword
-    }
+    zlash_cap_keyword_is_keyword() {
+        ZLASH_CAPDSC='keywords like "if" are "keyword"'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa if keyword
+    } >/dev/null 2>&1
 
-    _compat_test_cap_keyword_is_reserved() {
-        _ZLASH_SHELL_CAP_DESC='keywords like "if" are "reserved"'
-        _ZLASH_SHELL_CAP_DEPS=""
-        _unsecure_test_word_isa if reserved
-    }
+    zlash_cap_keyword_is_reserved() {
+        ZLASH_CAPDSC='keywords like "if" are "reserved"'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa if reserved
+    } >/dev/null 2>&1
 
-    # NOTE: Still not a general version. (see NOTE of `_unsecure_test_word_isa`)
-    _unsecure_test_word_isa_builtin() { _unsecure_test_word_isa "$1" builtin; }
-    if _compat_test_cap_keyword_is_keyword; then
-        _unsecure_test_word_isa_keyword() { _unsecure_test_word_isa "$1" keyword; }
-    elif _compat_test_cap_keyword_is_reserved; then
-        _unsecure_test_word_isa_keyword() { _unsecure_test_word_isa "$1" reserved; }
+    # Capability testing helper functions:
+    #
+    #   - _unsefe_test_word_isa_builtin
+    #
+    #   - _unsefe_test_word_isa_keyword
+    #
+    # NOTE: Still not a general version. (see NOTE of `_unsefe_test_word_isa`)
+    if zlash_cap_builtin_lists_builtins; then
+        _unsefe_test_word_isa_builtin() {
+            case "$(builtin)" in
+                *"$1"*) return 0;
+            esac
+            return 1;
+        }
     else
-        _unsecure_test_word_isa_keyword() { _unsecure_test_word_isa "$1" reserved; }
+        _unsefe_test_word_isa_builtin() {
+            _unsefe_test_word_isa "$1" builtin
+        }
     fi
+    if zlash_cap_keyword_is_keyword; then
+        _unsefe_test_word_isa_keyword() {
+            _unsefe_test_word_isa "$1" keyword
+        }
+    elif zlash_cap_keyword_is_reserved; then
+        _unsefe_test_word_isa_keyword() {
+            _unsefe_test_word_isa "$1" reserved
+        }
+    else
+        _unsefe_test_word_isa_keyword() {
+            _unsefe_test_word_isa "$1" reserved
+        }
+    fi
+
+    zlash_cap_echo_builtin() {
+        ZLASH_CAPDSC='"echo" is a builtin'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa_builtin echo
+    } >/dev/null 2>&1
+
+    zlash_cap_printf_builtin() {
+        ZLASH_CAPDSC='"printf" is a builtin'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa_builtin printf
+    } >/dev/null 2>&1
+
+    zlash_cap_enable_builtin() {
+        ZLASH_CAPDSC='"enable" is a builtin'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa_builtin enable
+    } >/dev/null 2>&1
+
+    zlash_cap_builtin_builtin() {
+        ZLASH_CAPDSC='"builtin" is a builtin'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa_builtin builtin
+    } >/dev/null 2>&1
+
+    # Ksh-like way of builtin disabling
+    zlash_cap_rm_builtin_d() {
+        ZLASH_CAPDSC='"builtin -d echo" removes a builtin "echo"'
+        ZLASH_CAPREQS="echo_builtin"
+        (
+            PATH="" || return 1
+            eval 'OUT=$(echo OK)' || return 1
+            case "$OUT" in
+                OK) :;;
+                *) return 1;;
+            esac
+            eval 'builtin -d echo' || return 1
+            eval 'OUT="$(echo OK)" || OUT="FAILED"' || return 1
+            case "$OUT" in
+                FAILED) ! zlash_cap_echo_builtin && return 0;;
+            esac
+            return 1
+        )
+    } >/dev/null 2>&1
+
+    # Bash-like way of builtin disabling
+    zlash_cap_rm_builtin_enable_n() {
+        ZLASH_CAPDSC='"enable -n echo" removes a builtin "echo"'
+        ZLASH_CAPREQS="echo_builtin"
+        (
+            PATH="" || return 1
+            eval 'OUT=$(echo OK)' || return 1
+            case "$OUT" in
+                OK) :;;
+                *) return 1;;
+            esac
+            eval 'enable -n echo' || return 1
+            eval 'OUT="$(echo OK)" || OUT="FAILED"' || return 1
+            case "$OUT" in
+                FAILED) ! zlash_cap_echo_builtin && return 0;;
+            esac
+            return 1
+        )
+    } >/dev/null 2>&1
+
+    # Bash and Zsh do this, but not Ksh variants.
+    zlash_cap_builtin_calls_builtins() {
+        ZLASH_CAPDSC='"builtin echo" calls a builtin echo'
+        ZLASH_CAPREQS="echo_builtin printf_builtin builtin_builtin"
+        (
+            PATH="" || return 1
+            echo() { printf '%s\n' 'overriden'; }
+            eval 'OUT=$(builtin echo "notfunc")' || return 1
+            case "$OUT" in
+                'notfunc') return 0;;
+            esac
+            return 1
+        )
+    }
+
+    # Ksh variants do this, but not Bash nor Zsh.
+    zlash_cap_command_calls_builtins() {
+        ZLASH_CAPDSC='"command echo" calls a builtin echo'
+        ZLASH_CAPREQS="echo_builtin printf_builtin builtin_builtin"
+        (
+            PATH="" || return 1
+            echo() { printf '%s\n' "func"; }
+            eval 'OUT=$(command echo "notfunc")' || return 1
+            case "$OUT" in
+                'notfunc') return 0;;
+            esac
+            return 1
+        )
+    }
 
     # `[` is an archaic command. `[[` has been "new" prectically forever, and
     # recommended. Doesn't word-split unquoted left, and (without pattern
     # characters) unquoted right.
-    _compat_test_cap_double_braket_str_eq() {
-        _ZLASH_SHELL_CAP_DESC='[[ $VAL == "$STR" ]]'
-        _ZLASH_SHELL_CAP_DEPS=''
-        ( eval 'VAR="~/a b" || return 1
-                [ "$VAR" = "~/a b"   ] && \
-                [[ $VAR == "~/a b"  ]] &&  \
-                [[ $VAR == $VAR     ]] &&   \
-                [[ $VAR != "~/a bc" ]]'
+    zlash_cap_double_braket_str_eq() {
+        ZLASH_CAPDSC='[[ $VAL == "$STR" ]]'
+        ZLASH_CAPREQS=''
+        ( eval '_ZLASH_VAR="~/a b" || return 1
+                [ "$_ZLASH_VAR" = "~/a b"   ] && \
+                [[ $_ZLASH_VAR == "~/a b"  ]] &&  \
+                [[ $_ZLASH_VAR == $_ZLASH_VAR     ]] &&   \
+                [[ $_ZLASH_VAR != "~/a bc" ]]'
         )
     } >/dev/null 2>&1
 
     # Pattern-matching double-brackets.
-    _compat_test_cap_double_braket_str_pat() {
-        _ZLASH_SHELL_CAP_DESC='[[ $VAL == $PAT ]]'
-        _ZLASH_SHELL_CAP_DEPS=""
+    zlash_cap_double_braket_str_pat() {
+        ZLASH_CAPDSC='[[ $VAL == $PAT ]]'
+        ZLASH_CAPREQS=""
         ( eval '
-            VAR="~/a bbcdd e" || return 1
-            [    "$VAR"   = "~/a bbcdd e"  ] &&\
-            [[    $VAR    ==     *"c"*    ]] && \
-            [[    $VAR    !=     *"f"*    ]] &&  \
-            [[  ":$VAR"   ==  ":~"*c*     ]] &&   \
-            [[  ":$VAR"   !=  ":f"*c*     ]] &&    \
-            [[  "${VAR}:" ==      *c*"e:" ]] &&     \
-            [[  "${VAR}:" !=      *c*"f:" ]] &&      \
-            [[ ":${VAR}:" ==  ":~"*c*"e:" ]] &&       \
-            [[ ":${VAR}:" !=  ":~"*f*"e:" ]]
+            _ZLASH_VAR="~/a bbcdd e" || return 1
+            [    "$_ZLASH_VAR"   = "~/a bbcdd e"  ] &&\
+            [[    $_ZLASH_VAR    ==     *"c"*    ]] && \
+            [[    $_ZLASH_VAR    !=     *"f"*    ]] &&  \
+            [[  ":$_ZLASH_VAR"   ==  ":~"*c*     ]] &&   \
+            [[  ":$_ZLASH_VAR"   !=  ":f"*c*     ]] &&    \
+            [[  "${_ZLASH_VAR}:" ==      *c*"e:" ]] &&     \
+            [[  "${_ZLASH_VAR}:" !=      *c*"f:" ]] &&      \
+            [[ ":${_ZLASH_VAR}:" ==  ":~"*c*"e:" ]] &&       \
+            [[ ":${_ZLASH_VAR}:" !=  ":~"*f*"e:" ]]
         ')
     } >/dev/null 2>&1
 
-    _compat_test_cap_builtin_calls_builtin() {
-        _ZLASH_SHELL_CAP_DESC='builtin calls a builtin'
-        _ZLASH_SHELL_CAP_DEPS=""
+    zlash_cap_builtin_calls_builtin() {
+        ZLASH_CAPDSC='builtin calls a builtin'
+        ZLASH_CAPREQS=""
         (
             echo() { return 1; }
             PASS='FAILED'
@@ -519,13 +1121,13 @@ _compat_init() {
     } >/dev/null 2>&1
 
     # `printf %q` shell-special character escaping, like `$` and space.
-    _compat_test_cap_printf_q() {
-        _ZLASH_SHELL_CAP_DESC='printf %q\\n "$val"'
-        _ZLASH_SHELL_CAP_DEPS=''
+    zlash_cap_printf_q() {
+        ZLASH_CAPDSC='printf %q\\n "$val"'
+        ZLASH_CAPREQS=''
         # TODO: try to secure randomize, or at least just randomize the words!
         (
             IFS=' ' || return 1
-            _unsecure_test_word_isa_builtin printf && \
+            _unsefe_test_word_isa_builtin printf && \
                 case "$(printf %q\\n '$one two')" in
                     '\$one\ two') return 0;;
                     *) return 1;;
@@ -533,7 +1135,7 @@ _compat_init() {
         )
     } >/dev/null 2>&1
 
-    if ! _compat_test_cap_printf_q; then
+    if ! zlash_cap_printf_q; then
         echo 'WARNING: CRITICAL INSECURITY: Shell does not provide the' \
              'most portable sanitation mechanism' >/dev/stderr
         case "${ZLASH_CRITICAL_INSECURITY:-exit}" in
@@ -548,14 +1150,14 @@ _compat_init() {
     fi
 
     # `printf` to a variable.
-    _compat_test_cap_printf_to_var() {
-        _ZLASH_SHELL_CAP_DESC='printf -v var %s "$val"'
-        _ZLASH_SHELL_CAP_DEPS=''
-        _unsecure_test_word_isa_builtin printf && \
+    zlash_cap_printf_to_var() {
+        ZLASH_CAPDSC='printf -v var %s "$val"'
+        ZLASH_CAPREQS=''
+        _unsefe_test_word_isa_builtin printf && \
         (
-            VAR="one" || return 1
-            eval 'printf -v VAR %s "two"' || return 1
-            case "$VAR" in
+            _ZLASH_VAR="one" || return 1
+            eval 'printf -v _ZLASH_VAR %s "two"' || return 1
+            case "$_ZLASH_VAR" in
                 'two') return 0;;
                 *) return 1;;
             esac
@@ -563,9 +1165,9 @@ _compat_init() {
     } >/dev/null 2>&1
 
     # Plain nested expansion indirection.
-    _compat_test_cap_exp_indirect_naked() {
-        _ZLASH_SHELL_CAP_DESC='"${$var}"'
-        _ZLASH_SHELL_CAP_DEPS=''
+    zlash_cap_exp_indirect_naked() {
+        ZLASH_CAPDSC='"${$var}"'
+        ZLASH_CAPREQS=''
         (
             SECRET='password'
             INDIRECTION='SECRET'
@@ -578,9 +1180,9 @@ _compat_init() {
     } >/dev/null 2>&1
 
     # Explicit expansion indirection with bang (`!`)
-    _compat_test_cap_exp_indirect_bang() {
-        _ZLASH_SHELL_CAP_DESC='"${!var}"'
-        _ZLASH_SHELL_CAP_DEPS=''
+    zlash_cap_exp_indirect_bang() {
+        ZLASH_CAPDSC='"${!var}"'
+        ZLASH_CAPREQS=''
         (
             SECRET='password'
             INDIRECTION='SECRET'
@@ -593,9 +1195,9 @@ _compat_init() {
     } >/dev/null 2>&1
 
     # Explicit expansion indirection with `(P)`
-    _compat_test_cap_exp_indirect_P() {
-        _ZLASH_SHELL_CAP_DESC='"${(P)var}"'
-        _ZLASH_SHELL_CAP_DEPS=''
+    zlash_cap_exp_indirect_P() {
+        ZLASH_CAPDSC='"${(P)var}"'
+        ZLASH_CAPREQS=''
         (
             SECRET='password'
             INDIRECTION='SECRET'
@@ -610,74 +1212,74 @@ _compat_init() {
     # Some shells distinguish between POSIX-defined builtins and other builtins
     # and some shells do not allow function definitions with names of shadowing
     # special builtins.
-    _compat_test_cap_return_override() {
-        _unsecure_test_word_isa_builtin return && \
+    zlash_cap_return_override() {
+        _unsefe_test_word_isa_builtin return && \
         ( eval 'return() { :; }' ) >/dev/null 2>&1
     }
 
-    _compat_test_cap_alt_func_decl() {
+    zlash_cap_alt_zlash_func_decl() {
         ( eval 'function name { :; }' ) >/dev/null 2>&1
     }
 
     # Some shells will tolerate this type of declaration.
-    _compat_test_cap_mix_func_decl() {
+    zlash_cap_mix_zlash_func_decl() {
         ( eval 'function name() { :; }' ) >/dev/null 2>&1
     }
 
     # Invalid in strict POSIX compliance.
-    _compat_test_cap_func_name_with_dot() {
+    zlash_cap_zlash_func_name_with_dot() {
         ( eval '.name() { :; }' ) >/dev/null 2>&1
     }
 
     # Invalid in strict POSIX compliance.
-    _compat_test_cap_func_name_with_colon() {
+    zlash_cap_zlash_func_name_with_colon() {
         ( eval ':name() { :; }' ) >/dev/null 2>&1
     }
 
     # Invalid in strict POSIX compliance.
-    _compat_test_cap_func_name_with_at() {
+    zlash_cap_zlash_func_name_with_at() {
         ( eval '@name() { :; }' ) >/dev/null 2>&1
     }
 
     # Invalid in strict POSIX compliance.
-    _compat_test_cap_func_name_with_hash() {
+    zlash_cap_zlash_func_name_with_hash() {
         ( eval 'name#5() { :; }' ) >/dev/null 2>&1
     }
 
     # Invalid in strict POSIX compliance.
     # Supports Ksh93 namespacing.
-    _compat_test_cap_var_name_with_dot() {
+    zlash_cap_var_name_with_dot() {
         ( eval '.name=' ) >/dev/null 2>&1
     }
 
     # Invalid in strict POSIX compliance.
     # Is Ksh93-specific.
-    _compat_test_cap_special_ns_var_sh_version() {
+    zlash_cap_special_ns_var_sh_version() {
         ( eval '[ -n "${.sh.version}" ]' ) >/dev/null 2>&1
     }
 
-    _compat_test_cap_arith_lit_oct() {
+    zlash_cap_arith_lit_oct() {
         let '077+077==126' >/dev/null 2>&1 \
             && ! let '08'  >/dev/null 2>&1
     }
 
-    _compat_test_cap_arith_lit_hex() {
+    zlash_cap_arith_lit_hex() {
         let '0xFF+0xff==510' >/dev/null 2>&1 \
             && ! let '0xG'   >/dev/null 2>&1
     }
 
-    _compat_test_cap_arith_lit_bin() {
+    zlash_cap_arith_lit_bin() {
         let '0b11+0b11==6' >/dev/null 2>&1 \
             && ! let '0b2' >/dev/null 2>&1
     }
 
-    _compat_test_cap_arith_lit_nbase() {
+    zlash_cap_arith_lit_nbase() {
         let '3#22+3#22==16' >/dev/null 2>&1 \
             && ! let '3#3'  >/dev/null 2>&1
     }
 
     # Arbitrary precision decimals (Ksh93 uses libmath)
-    _compat_test_cap_arith_arbp() {
+    zlash_cap_arith_arbp() {
         let '0.1+0.2==0.3' >/dev/null 2>&1
     }
 
@@ -690,15 +1292,15 @@ _compat_init() {
     } >/dev/null 2>&1
 
     # Floating point math
-    _compat_test_cap_arith_float() {
+    zlash_cap_arith_float() {
         let '0.1+0.2!=0.3 && 0.1+0.2<0.3001 && 0.1+0.2>0.2999' >/dev/null 2>&1
     }
 
-    _compat_test_cap_arith_sqrt() {
+    zlash_cap_arith_sqrt() {
         ( eval let 'sqrt(9)==3' ) >/dev/null 2>&1
     }
 
-    _compat_test_cap_compound_vars() {
+    zlash_cap_compound_vars() {
         ( eval 'v=( x="X" y="Y" ); [ "${v.y}" = "Y" ]' ) >/dev/null 2>&1
     }
 
@@ -825,7 +1427,7 @@ _compat_init() {
             # NOTE: These are not to be cleared during env scrubbing, if
             #       scrubbed subshell doesn't want to lose their "specialness",
             #       as per bash manpage.
-            ZLASH_PROTECTED_VARS="$( (
+            ZLASH_PROTECTED__ZLASH_VARS="$( (
                 IFS=":"
                 declare -a protected_vars
                 protected_vars=(
@@ -835,7 +1437,7 @@ _compat_init() {
                     LINENO        RANDOM        SECONDS         SRANDOM
                     BASH_COMPAT   BASH_XTRACEFD HOSTFILE        MAILCHECK
                 )
-                protected_vars+=("$ZLASH_PROTECTED_VARS")
+                protected_vars+=("$ZLASH_PROTECTED__ZLASH_VARS")
                 echo "$protected_vars"
             ) )" || return 1
             _compat_test_am_bash() { builtin return 0; }
