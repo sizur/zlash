@@ -357,7 +357,7 @@
 # `zlash_prtbl_check_sanity`
 #
 # Check if Zlash assumptions hold under current shell, which are a subset of a
-# portable subset (not a mistake) of the POSIX shell language.
+# portable subset of the POSIX shell language.
 #
 # Zlash does not support a shell under which this sanity check fails.
 #
@@ -393,13 +393,15 @@ zlash_prtbl_check_sanity() {
 # consice (since this is just a minimal baseline check, before even anything
 # Zlash implements), (subjectively) readable, and have traceability helpers
 # (`CHECK`). The price it pays is individual checks composability -- checks rely
-# on state modified by prior checks within this function's invocation.
+# on state modified by prior checks within this function's invocation. (At least
+# this is the attempted justification of this mess of a function.)
 #
 # The sanity check is meant as a guard to not proceed unless we have enough
 # basic and critical capabilities, e.g. subshell isolation, substring removing
 # expansions (required for critical fallback implementation of quoting variable
-# content), commmand-temporary environment (required for local scope fallback
-# implementation), etc...
+# content), commmand-temporary environment (for local scope fallback
+# implementation, required when function exit trapping capability has not been
+# detected), etc...
 #
 # NOTE: Significant deviations in default behavior, most modifiable via options,
 #       nevertheless necesitating omission from the baseline:
@@ -647,7 +649,7 @@ _zlsh_prtbl_check_sanity() {
             &&    [ "$_ZLSH_TMP" = 'OK' ]           \
             &&    [ "$_ZLSH_TMP" = "$_ZLSH_TMP_2" ]  \
             &&  : CHECK checksum                      \
-            &&    [ "${_ZLSH_TMP_CHECKSUM--1}" -eq 57 ]\
+            &&    [ "${_ZLSH_TMP_CHECKSUM--1}" -eq 60 ]\
                                                         \
             &&  : CHECK unset -v, -f command  \
             &&    unset -v  _ZLSH_TMP          \
