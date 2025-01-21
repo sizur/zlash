@@ -1,193 +1,12 @@
 # -*- mode: shell-script -*-
 #
-# TODO: Move this section to docs/shell-landscape.md
+# Project: Zlash
+# File:    zla.sh
+# Summary: Zero-install Logical Adaptive Structured Shell
+# Author:  Yevgeniy Grigoryev
+# License: MIT License (https://opensource.org/licenses/MIT)
+# Copyright (c) 2024-2025 Yevgeniy Grigoryev
 #
-# Existing Shells Landscape (excluding archaic shells):
-#
-#  - bash :: Bourne Again Shell
-#         PRO:
-#              - ubiquitous (default on over 80% of all servers,
-#                            assummed available by many standard tools),
-#              - user-friendly for simple use,
-#              - high POSIX compliance,
-#              - stable adoption level (very slowly decreasing)
-#              - excellent for prod envs where perf is not #1 constraint
-#         CON:
-#              - not user-friendly for advanced use,
-#              - arcane invocations (consequence of POSIX compliance),
-#              - ton of gotcha corner-case foot-shooters,
-#              - text pipelines,
-#              - compatibility concern causes very slow development
-#              - performance is not the primary consideration
-#          PERF (slower than zsh or ksh, latest at time of writing):
-#              - 10x ksh,  ~   zsh in: command substitution
-#              -  4x ksh, 1.5x zsh in: builtin output
-#              -  4x ksh,  ~   zsh in: command evaluation
-#              -  3x zsh,  3x  ksh in: definition evaluation
-#              -  3x ksh,  ~   zsh in: positional args, str cmp
-#              -  3x zsh, 2.5x ksh in: assignments
-#              -  3x zsh,  2x  ksh in: increments
-#              -  1.5-3x zsh, 1.5-3x ksh in: str ops via expansion
-#
-#  - zsh  :: [Zee-shell]
-#          PRO:
-#              - most user-friendly and most advanced *NIX shell,
-#              - increasing adoption,
-#              - under active development,
-#              - high POSIX compliance,
-#              - most advanced custom completion and interactive command line
-#                          editing and prompting functionality from any shell
-#              - excellent personal and production shell
-#              - many extension modules available
-#          CON:
-#              - text pipelines,
-#              - low (but increasing) adoption,
-#              - arcane invocations (consequence of POSIX compliance)
-#
-#  - ksh93 :: Korn Shell
-#          PRO:
-#              - more advanced than even Zsh in many scripting aspects (static
-#                scope, true refs, multidim arrays, enums as types, type and
-#                function static vars, compound vars, binary data, and more)
-#              - required on few old enterprize UNIX systems
-#              - few die-hard advanced users,
-#              - very high POSIX compliance
-#              - well suited for high-perf production environments
-#              - outperforms dash
-#          CON:
-#              - very low and decreasing adoption,
-#              - default configuration is least user-friendly from major *NIX
-#                shells above for interactive use
-#              - text pipelines,
-#              - arcane invocations (consequence of POSIX compliance)
-#              - non-existent development (some bug-fixes in over 20 years)
-#
-#  - pwsh  :: PowerShell (relatively new, from Windows)
-#          PRO:
-#              - the most powerful shell of all currently,
-#              - full .NET object pipelines, and integrated text pipelines,
-#              - seamless in-process interoperability with any .NET language
-#                                                            (C#, F#, etc...),
-#              - very user-friendly (both simple and advanced use),
-#              - discoverable functionality,
-#              - under active development,
-#              - available on MacOS and Linux
-#              - well suited as personal shell on any major platform,
-#              - extremely well suited as personal shell for .NET devs,
-#                                 and as production shell in .NET environments
-#              - many extension modules available,
-#              - easy to create and publish extension modules
-#          CON:
-#              - adoption hurdles (Microsoft stigma, and works differently
-#                                                      from any *NIX shell)
-#              - no POSIX compliance,
-#              - some *NIX usecases are not optimal (integration of POSIX parallel
-#                                                    pipelines within object pipelines)
-#              - will never be deployed on many *NIX production environments
-#                (adds .NET runtime requirement, adding maintainability
-#                 and attack surface concerns and costs, also in module providers)
-#
-#  - fish  :: Friendly Interactive Shell (relatively new *NIX shell)
-#          PRO:
-#              - structured text pipelines (helps avoid quoting pitfalls),
-#              - very user-friendly for simple use,
-#              - discoverable functionality for simple use
-#          CON:
-#              - no POSIX compliance by design,
-#              - advanced abilities of other shells have no support in fish,
-#              - will never be adopted in most production environments,
-#              - suitable promarily as personal shell for its proponents,
-#                      or in small and highly custom production environments.
-#
-#  - dash  :: Debian Almquist Shell
-#          PRO:
-#              - suitable for resource-starved production environments
-#              - very high POSIX compliance
-#          CONS:
-#              - not suitable as personal shell
-#              - no perf benefits compared to other major shells above
-#              - arcane invocations (consequence of POSIX compliance)
-#
-#  - Oil   :: Oils for UNIX (OSH, YSH) (needs evaluation)
-#
-#  Exotic Shells to be evaluated (not POSIX compliant):
-#
-#     - xonsh   :: Python3.6-superset shell
-#
-#     - nushell :: Nu (pwsh-inspired cross-platform functional structured pipelines in Rust)
-#
-#     - elvish  :: (in Go)
-#
-# TODO: remove this brainstorm for naming.
-# OUR PROJECT NAME PROPOSALS:
-#
-#  - Zlash    :: Zero-install adaptive structured shell
-#               (similar-sounding to Slash (/), a very common command line character)
-#
-#  - Zrelish :: Zero-install relational interactive structured shell
-#               (similar sounding to Zrelysh: deminutive of ripe or mature in
-#                Russian, signifying this is serious business)
-#               (similar sounding to Relish: something beautiful)
-#
-#               Diff between a function and a relation:
-#
-#               - Function: addition(augent, addent) -> sum
-#
-#                  Always one-directional: must provide two values to get the sum.
-#
-#               - Relation: addition(augent, addent, sum)
-#
-#                  Omnidirectional: any number of the three arguments
-#                                   can be values or variables.
-#
-#                  If we use caps to denote variables, the following relation is
-#                  equivalent to the addition function:
-#
-#                           addition(augent, addent, SUM)
-#
-#                  Yet the same relation with a different argument as variable
-#                  is equivalent to a subtraction function:
-#
-#                           addition(AUGENT, addent, sum)
-#
-#                  And if more than one argument is a variable, a relation produces
-#                  a (possibly infinite) result set of valid values for the variables.
-#
-# The following is aproject name brainstorming matrix, where letters in possible
-# parentheses in interpretations are aligned to their anchors in project name.
-# The numbers on the right margin denote interpretation groups that match well.
-#
-#            (i)nteractive   |
-#        (rel)ational        |
-#   ---------------------------
-#    -  Z rel i  s  h
-#    -  Z  l  a  s  h
-#   ---------------------------
-#      (Z)      (s)(h)       |
-#           B(a)(s)(h)       |
-#      (Z)en                 |
-#      (Z)ero                | 1
-#   instal(l)                | 1
-#      (Z)ero-install        |
-#         (l)ean             | 2
-#         (l)ightweight      | 3
-#         (l)ight            | 4
-#            (a)bstraction   | 2,3,4
-#            (a)dvanced      | 5
-#            (a)daptive      | 6
-#               (s)tructured | 7
-#               (s)(h)ell    | 5,6
-#                 s(h)ell    | 7
-#
-
-#
-# Source this in Bash and Zsh login and interactive configurations,
-# and if `/bin/sh` is Bash or Zsh, this will also be sourced by Pwsh
-# when invoked as login shell.
-#
-
-# POSIX Shell Reference:
-# https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html
 
 # Disabling irrelevant shellcheck checks for the whole file:
 #
@@ -195,64 +14,838 @@
 #      ( https://www.shellcheck.net/wiki/SC2119 )
 #
 # shellcheck disable=SC2119
+#
 
 #------------------------------------------------------------------------------
-### 1.    CONVENTIONS
+### 1.         PROLOGUE
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 1.1.      Goal
 #
-# POSIX compliance is assumed prior identification of supported shell and
-# version.  After the shell and verion are identified, shell-specifics can
-# be utilized.
+# Launch any POSIX-compatible[^1] shell, including remote sessions. By sourcing
+# this file -- whether manually or auto-forwarded from another shell instance --
+# you unlock advanced interactive features. These include structured objects,
+# object pipelines, binary data processing, custom class definitions, and more.
+# Additionally, Zlash introduces novel capabilities powered by an integrated
+# relational solver, all tailored to your environment without requiring
+# installation, automatically optimized by available, probed tools.
 #
-# Functions with `_compat_` prefix in name are designed to be executable
-# as is in any Zlash-supported shell.
+# [^1]: By a POSIX-compatible shell, we mean any shell that is able to interpret
+#       and execute a POSIX-compliant shell script.
 #
-# Global variables have either a `ZLASH_` prefix, or `_ZLASH_`if they are
-# private.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 1.2.      Motivation
 #
-# Non-POSIX function naming convention underpins all the advanced mechanisms
-# of Zlash.
+# The increasing popularity and proliferation of modern interactive shells[^1],
+# terminal emulators[^2], and a large number of new, high-quality CLI/TUI
+# tools/apps[^3] is a proof of a need that a GUI cannot fulfill generally. That
+# need is the expressive power and replicability that an interactive
+# command-line provides.
 #
-# Functions are split into different kinds:
+# The POSIX standard, while foundational in unifying early computing
+# environments, faces limitations due to its success. Maintaining compatibility
+# with legacy systems and mitigating issues caused, in part, by
+# underspecification have hindered its evolution. As a result, modern shells
+# often trade POSIX compliance for advanced functionality.
 #
-#   - Commands: <Verb>-<Noun>
+# However, the need for compatibility remains critical. Legacy systems still
+# require maintenance, and many production environments must restrict utilities.
 #
-#         Command function naming follows Powershell convention of a Noun
-#         following a standard Verb, for the benefit of discoverability
-#         (e.g. via `Get-Command` command).
+# While GNU Autoconf project (likely the best success story in portable complex
+# tool chain) addresses the portability problem by identifying the best tools
+# available in the environment/system, for its shell functionality it sticks to
+# the lowest-common-demomenator across all historical possibilities, which is
+# not a huge issue for it since Autoconf's scripting is never interactive.
 #
-#   - Namespaced: These are split thurther into:
+# Zlash project scope is targeting POSIX-compatible interactive shells, and all
+# of these are moderately-to-severely lacking when compared to modern, but POSIX
+# non-compatible shells. We aim to address these challenges by probing for and
+# building on the features available to current shell, which makes this much
+# more viable than building on the lowest-common-denominator from the 1970s.
 #
-#         - Static: <namespace>::<name>
+# [^1]: Powershell, Nushell, Fish, Xonsh, Elvish, Murex, etc...
 #
-#         - Member: $variable.<name>
+# [^2]: Kitty, Wezterm, Ghostty, Alacrity, Warp, Hyper, Extraterm, Tabby
+#       (formerly Terminus), Contour, Wave, darktile, rio, cool-retro-term,
+#       etc.. See: https://github.com/cdleon/awesome-terminals
 #
-# 
+# [^3]: See: https://github.com/toolleeo/awesome-cli-apps-in-a-csv
+#       (just searching page for "Rust" already gives 50+ results)
 #
-# Function names starting with an underscore (`_`) are private.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 1.2.      The Plan
+#  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+##### 1.2.1.   High-Level Plan
 #
-# Namespaces are encoded into function names, delimited by double colon (`::`).
+# 1. We start by relying on *hundreds* of cumulative man-years of experience
+#    distilled in GNU Autoconf Manual, Portable Shell Programming section[^1],
+#    and the POSIX Standard, Shell Utility section[^2]. We implementing a very
+#    basic portable functionality, just sufficient to start probing for
+#    successively more advanced features.
 #
-# TODO more docs here
+# 2. Then we probe current shell's capabilities, expanding our functionality on
+#    them ONLY if it's required for the following, more advanced probing.
+#
+# 3. After current shell's capabilities have been sufficiently probed, we build
+#    on them successively more advanced functionality to reaching parity of
+#    features of every modern POSIX-compatible interactive shell (think ksh93
+#    with zsh's completions, bash with ksh93's nested compound variables,
+#    discipline functions, automatic documentation, etc...), albeit using a bit
+#    more verbose, but cross-shell syntax.
+#
+# 4. Now we add some features of Powershell, namely advanced functions with
+#    validating and completing parameters, custom classes and objects with
+#    methods passed through the pipeline, etc...). Then we add and explore new
+#    features relational programming enables.
+#
+# Initial targets for both, the host shell and the feature-parity shells of step
+# (3) are Bash 5.0, Zsh 5.9, and Ksh93. Overtime, the current shell target can
+# be lowered all the way down to pre-array shells, where some interactive
+# features will be lost again if substituting external tools (e.g. `fzf`) are
+# not found.
+#
+# [^1]: https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/html_node/Portable-Shell.html
+#
+# [^2]: https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html
+#
+#  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+##### 1.2.2.  Performance Expectations
+#
+# When a Zlash command is executed for the first time, a best available
+# specialized implementation will be selected based on capabilities of the
+# shell, system, and availability of external tools. Capabiliteis are tested
+# only once per shell invocation (by default).
+#
+# While Zlash will attempt best effort, the additional features it provides
+# above base shell capabilities should not be expected to be comparable in
+# performance to best industry implementations of equivalent functionality. And
+# if no optimizing capabilities are discovered by Zlash, the fallbacks may be
+# significantly slower.
+#
+# Having said that, in some environments there will be no alternatives possible,
+# and having some of these features despite performance penalties may be
+# preferrable over not having them.
+#
+#  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+##### 1.2.2.  Structured Data in `/bin/sh`?
+#
+# To sketch, we start with four base types:
+#
+# - Str   : for string values or shell words
+# - Ref   : (possibly shell-native) namerefs of other variables by names
+# - IxArr : (shell-native or prefix-emulated) indexed arrays
+# - Assoc : (shell-native or prefix-emulated) associative arrays
+#
+# Each has `New-*` constructors, at least Local and Global variants, that can be
+# called with optional assignments, like so:
+#
+# > New-LocalStr myvarname "value"
+#
+# This will have the effect of `myvarname` variable in current function scope
+# holding a value of something like `0x1f5`, which is unique ID of the object.
+# Commands like the following become available:
+#
+# > $myvarname.length
+#
+# Which will execute a function `0x1f5.length`, created by the constructor, and
+# on completion, a variable `REPLY` is set to the shell-supported expansion like
+# `${#0x1f5}`, or appropriate fallback to external tool invocation or portable
+# implementation.
+#
+# These "methods" can be getters, setters, pipers, showers, etc..., and behave
+# as expected when values of elements are of other object types, including the
+# Ref type.
+#
+# Ksh93 adheres more strictly to POSIX function naming and doesn't allow
+# characters like `.` in function names. However, Ksh93 has proper hierarchical
+# `namespace`s, `discipline` functions, and user-defined custom types with
+# methods, including for nested compount variables. For example, the following
+# is valid in `ksh93t+`:
+#
+# > $ typeset -T StrT=(
+# > |     function length {
+# > |         REPLY=${#_}
+# > |     }
+# > | )
+# > $ function New_Str {
+# > |     typeset -n var="$1"
+# > |     StrT ._0x1f5="$2"
+# > |     var=._0x1f5
+# > | }
+# > $ New_Str VAR '12345'
+# > $ $VAR.length
+# > $ echo $REPLY
+# > 5
+# > $
+#
+# Custom object types can be derived from the four base ones either via
+# prototyping mechanism, or a more complex one, like Python's metaclass
+# mechanism, including dynamic method resolution. # TODO
+#
+# Object references are accounted (mechanisms varying widely depending on shell
+# capabilities) and object is recursivelty unset when refcount reaches zero.
+#
+#  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+##### 1.2.3.  Binary Data in `/bin/sh`?
+#
+# Most POSIX-compatible shells cannot store plain binary data in their variables
+# because they use C-strings internally, which are null (`\0`) terminated. So
+# the null (`\0`) character cannot exist in the string content, even when shell
+# is able to express it as a literal:
+#
+# > $ var=$'ab\0cd'
+# > $ echo ${#var}
+# > 2
+#
+# Zsh is an exception here. It even handles pattern matching over binary data:
+#
+# > $ [[ $var == *$'\0cd' ]] && echo ok || echo failed
+# > ok
+#
+# There are two workarounds, with very different semantics:
+#
+# 1. Shell variable semantic (i.e. global, local, subshell isolation):
+#
+#    Work with Base64 encoded binary values. Since it's a power of two base, bit
+#    manipulation is still easy.
+#
+# 2. Persistent (with cleanup) object IPC semantic:
+#
+#    Use temporary files as binary scalar objects and temporary directories as
+#    hierarchical objects with methods as scripts:
+#
+#    > $ echo "$OBJ"
+#    > /mnt/ramdisk_zlsh_41369/
+#    > $ $OBJ.mymethod arg1 arg2
+#
+#    Actual implementation is more complex than this, since shells would clear
+#    non-exported names before executing the script, but user interface remains
+#    essentially the same.
+#
+#    Zlash can create/reuse a ramdisk (or equivalent), depending on environment
+#    capabilities, with fallback utilizing `/tmp` or equivalent.
+#
+# Complex objects could be moved between the two semantics, opening a
+# possibility for efficient coprocess shared complex objects. (where efficiency
+# is dependent on shell and system capabiliteis)
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 1.3.     Reserved Identifier Namespace
+#
+# To facilitate prevention of naming collisions with user-definer or imported
+# functions or variables, the project reserves the following name prefixes.
+#
+# - `ZLASH` is a reserved prefix for environment variables.
+#
+# - `ZLASH`, `Zlash`, `zlash` are reserved name prefixes for shell functions and
+#   shell variables. `zlash` prefix is a lower-level interface than `Zlash`.
+#
+# - `_ZLSH`, `_Zlsh`, `_zlsh`, and `_unsafe_zlsh` are reserved prefixes for
+#   shell private functions and shell private variables. `_unsafe_zlsh`-prefixed
+#   private functions arguments should be either owned or sanitized by callers.
+#
+# - `_[1-9]` (default) followed by any number of `[0-9]` are not reserved, but
+#   set, dynamic logic variable identifiers. They are set to matched values by a
+#   solver, when solver is not provided with names for them. Zlash sets them
+#   only in contexts of solvers and solution callbacks. This convention is
+#   adopted from SWI-Prolog's anonymous variables, where its chosen for
+#   readability of complex solution structures. (`_` part is customizable.)
+#
+# - `_0` (default) name prefix is partially reserved by the format: `_0Mxxxxxx`,
+#   where `M` stands for an arbitrary "marker" character from the `[:alpha:]`
+#   set, followed by at least one or more of hexadecimal digits denoted by `x`
+#   (upper or lower case). These are reserved for unique identifier generation.
+#   The short form is chosen for a more humane representation in observable
+#   introspection. (`_0M` part is customizable.)
+#
+# - If shell has `namespace`s, hiararchical (ksh93) or not, these prefixes are
+#   also reserved for the top-level `namespace`s. Which, in Ksh93 case, means
+#   additional initial dot (`.`).
+#
+# - Additionally, a number of functions of the form *Verb_Noun* are provided, as
+#   defined in this file, and aliased to *Verb-Noun* form when underlying shell
+#   capability allows. These functions are the intended main interactive
+#   interface.
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 1.4.     Function Naming Conventions
+#
+# Zlash adopts interactive function naming convention from Powershell for its
+# discoverability, where the format is Verb-Noun, with Verb restricted to
+# approved verbs[^1], with a few exceptions. Due portability, we adapt the
+# convention to Verb_Noun, provide an alias of the form Verb-Noun, and enable
+# alias expansion in scripts, if current shell has that option and it is
+# disabled.
+#
+# Non-interactive Zlash functions are not restricted to that form, but will have
+# the reserved prefix to avoid collisions. Effort is made to balance name
+# lengths, categories, and argument type and order hints. For example,
+# `_unsafe_zlsh_prtbl_var_copy`:
+#
+# - `_unsafe_zlsh_` means its arguments must be fully owned or sanitized by the
+#   caller, and the function is a private part of this project, not intended to
+#   be used by user;
+#
+# - `_prtbl_` means it's part of the portable category, to be useable prior
+#   shell's capabilities are probed;
+#
+# - `var_copy` should hint that first argument is a source variable name, while
+#   second is a destination variable name.
+#
+# [^1]: https://learn.microsoft.com/en-us/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands
+#       (Or run `Get-Verb` in Powershell, or `pwsh -nop -c get-verb` from other
+#       shell if Powershell is installed)
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 1.5.     Sourcecode Sections
+#
+# The sourcecode is grouped into hierarchical sections, marked by comment
+# blocks. These, sometimes indentation-breaking, comment blocks serve a dual
+# purpose:
+#
+# 1. Enable quick and interactive TOC/section navigation, provided your editor
+#    can support that (e.g. `helm-swoop` or `vim-swoop` for Emacs and Vim
+#    respectively), or similar navigation to a manpage. Example "swoops":
+#
+#     - `^###`     : full Table of Contents;
+#
+#     - `^###\ `   : only top level ToC;
+#
+#     - `^### \ 2` : full ToC of only section 2.
+#
+# 2. Inline source of automatic user documentation generation, distinct from dev
+#    documentation, and distinct from user-discoverable help. The contents of
+#    these comment blocks are in Markdown syntax, and require minimal processing
+#    to generate user documentation from.
+#
+# Tripple hash (`#`) for top-level sections ensures commenting out
+# cross-sectional blocks will not affect navigation during development. Initial
+# two characters of each line of these blocks are removed in the documentation
+# generation pipeline.
+#
+# The "specialness" of these comment blocks is delimited at start by a dashed
+# line comment and at end with the end of the comment block, i.e. a line not
+# starting with a hash mark (`#`), or beginning of another such comment block.
+#
 
-_compat_init() {
+#------------------------------------------------------------------------------
+### 2.        INITIALIZATION
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 2.1.     Portable Minimal Functionality
+#
+# Before current shell capabilities have been probed, we need shell-portable
+# basic functionality, assuming as few constructs and utilities as possible. The
+# best references for this are:
+#
+# - GNU Autoconf Manual, Portable Shell Programming Section:
+#   https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/html_node/Portable-Shell.html
+#
+# - POSIX Standard, Utilities Section, Shell Command Language Chapter:
+#   https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html
+#
+# - Z-shell FAQ, Chapters 2 and 3:
+#   https://zsh.sourceforge.io/FAQ/zshfaq.html
+#
+#     (Zsh default functionality is only partially POSIX-compatible,
+#      necesitating only a subset of POSIX shell language for portability.)
+#
+# Literature for bonus points:
+#
+# - https://mywiki.wooledge.org/CategoryShell
+#
+
+#____________________________
+# `zlash_prtbl_check_sanity`
+#
+# Check if Zlash assumptions hold under current shell, which are a subset of a
+# portable subset (not a mistake) of the POSIX shell language.
+#
+# Zlash does not support a shell under which this sanity check fails.
+#
+# On failure, an effort is made to output execution trace.
+#
+# EXIT STATUS
+#     0     Zlash assumptions hold under current shell.
+#     >0    Current shell is not supported by Zlash.
+#
+zlash_prtbl_check_sanity() {
+    if ! _zlsh_prtbl_check_sanity >/dev/null 2>&1
+    then (
+        # Attempt to set execution trace and verbosity
+        set -vx || set -v -x || set -x || :
+
+        # Rerun the sanity check
+        _zlsh_prtbl_check_sanity
+    )
+    fi
+}
+
+# The following is a non-exhaustive sanity check of a baseline portable POSIX
+# language subset.
+#
+# The checks are all lumped together, since failing one is enough to bail out.
+# Isolating each individual test here could have a significant impact on
+# initialization performance, depending on underlying shell's subshell
+# optimization techniques.
+#
+# Current implementation priorities: smoke-testing assumptive features;
+# minimizing number of subshells for checks in aggregate (since this is executed
+# first during initialization, so on each shell invocation); and balancing being
+# consice (since this is just a minimal baseline check, before even anything
+# Zlash implements), (subjectively) readable, and have traceability helpers
+# (`CHECK`). The price it pays is individual checks composability -- checks rely
+# on state modified by prior checks within this function's invocation.
+#
+# The sanity check is meant as a guard to not proceed unless we have enough
+# basic and critical capabilities, e.g. subshell isolation, substring removing
+# expansions (required for critical fallback implementation of quoting variable
+# content), commmand-temporary environment (required for local scope fallback
+# implementation), etc...
+#
+# NOTE: Significant deviations in default behavior, most modifiable via options,
+#       nevertheless necesitating omission from the baseline:
+#
+#       - Bash aliases are not expanded in non-interactive shell mode
+#         (`shopt -s expand_aliases` is needed in non-interactive mode)
+#
+#       - Zsh unquoted parameter expansions are not word-split
+#         (`${=var}` expansion flag needs to be used)
+#
+#       - Zsh unquoted pattern fragments derived from parameter expansions (or
+#         command substitutions) are treated as if they were quoted -- expanded
+#         pattern metacharacters are not special
+#         (`${~var}` unquoted expansion flag needs to be used in pattern context
+#          for expansion's pattern metacharacters to be treated as such)
+#
+#       - Ksh93 function name validation adheres strongly to POSIX specification
+#         (`alias`  utilization is needed to relax invocation syntax)
+#
+_zlsh_prtbl_check_sanity() {
+    _zlsh_tmp_pass()    { return 0; }
+    _zlsh_tmp_fail()    { return 1; }
+    _ZLSH_TMP='NOT OK' || return 1
+    : CHECK short-circuit operators as inverse-valued boolean logic
+    _zlsh_tmp_fail || _zlsh_tmp_pass && : && true && ! false \
+    &&  : CHECK '{...}' group compound command \
+    &&  {
+            ! true ||:
+            : CHECK if command
+            if false
+            then          _ZLSH_TMP_2='NOT OK'
+            else (! :) || _ZLSH_TMP_2='OK'
+            fi
+        }\
+    &&  : CHECK eval command      \
+    &&    eval 'true && ! false'   \
+                                    \
+    &&  : CHECK '(...)' subshell                   \
+    &&  if (exit 1) || (return 1) || _ZLSH_TMP='OK' \
+        &&  : CHECK while, read commands,            \
+                    redirection, process substitution \
+        &&    _ZLSH_TMP_CHECKSUM=                      \
+        &&  while read _ZLSH_TMP_CHECKSUM; do           \
+                : CHECK break command
+                break
+            done < <(
+
+                _ZLSH_TMP_CHECKSUM=0 || exit 1
+                CHECK() {
+                    : CHECK let command, assigning addition
+                    let _ZLSH_TMP_CHECKSUM+=1
+                } || exit 1
+
+                CHECK CHECK                               \
+                &&    [ "${_ZLSH_TMP_CHECKSUM-}" -eq 1 ]   \
+                                                            \
+                && CHECK function overriding existing command   \
+                &&    true                                       \
+                &&    true() { _ZLSH_TMP='NOT OK'; false; }       \
+                &&  ! true                                         \
+                                                                    \
+                && CHECK func redefinition   \
+                &&    true() { return 0; }    \
+                &&    true                     \
+                                                \
+                && CHECK arithmetic context boolean logic translation \
+                &&  ! let 0 && let 1 && let 2 && let '-1' && let '-2'  \
+                                                                        \
+                && CHECK test-\[ equivalence         \
+                &&    test 1 && test 0 && ! test ''   \
+                &&    [  1 ] && [  0 ] && ! [ '' ]     \
+                                                        \
+                && CHECK integer vs string equality               \
+                &&    [    1   -eq   1  ] && [    1   -eq 001    ] \
+                &&  ! [    1    =  001  ] && [    1    =    1    ]  \
+                &&    [    1    =   "1" ] && [    1    =   '1'   ]   \
+                &&    [   ''    =   ''  ] && [ "value" = 'value' ]    \
+                &&  ! [ 'value' =   ''  ] && [ "value" =  value  ]     \
+                                                                        \
+                && CHECK escaping                          \
+                &&    [ "\"" =  '"' ] && [ "\\" =   '\' ]   \
+                &&    [ "\`" =  '`' ] && [ "\$" =   '$' ]    \
+                &&    [  "'" =  \'  ] && [  " " =   \   ]     \
+                &&    [ "\ " = '\ ' ] && [ "\ " = \\\   ]      \
+                                                                \
+                && CHECK expanding/non-expanding quoting \
+                &&  ! [  '$_ZLSH_TMP' =    'value'   ]    \
+                &&  ! [  "$_ZLSH_TMP" =    'value'   ]     \
+                &&  ! [  "$_ZLSH_TMP" = '$_ZLSH_TMP' ]      \
+                &&    [ "\$_ZLSH_TMP" = '$_ZLSH_TMP' ]       \
+                && CHECK non-local dynamic scoping            \
+                &&    [  "$_ZLSH_TMP" =   'NOT OK'   ]         \
+                                                                \
+                && CHECK concatenation                                    \
+                &&    [ "_$_ZLSH_TMP, it's ok" = _NOT\ OK,' it'"'"'s ok' ] \
+                                                                            \
+                && CHECK string length expansion  \
+                &&    [ ${#_ZLSH_TMP} = '6' ]      \
+                                                    \
+                && CHECK set/empty/assign param expn    \
+                &&    [ "${_ZLSH_DONOTSETME-x}"  = 'x' ] \
+                &&    [ "${_ZLSH_DONOTSETME:-x}" = 'x' ]  \
+                &&    [ "${_ZLSH_DONOTSETME+x}"  = ''  ]   \
+                &&    [ "${_ZLSH_DONOTSETME:+x}" = ''  ]    \
+                &&    [ "${_ZLSH_DONOTSETME=}"   = ''  ]     \
+                &&    [ "${_ZLSH_DONOTSETME}"    = ''  ]      \
+                &&    [ "${_ZLSH_DONOTSETME-x}"  = ''  ]       \
+                &&    [ "${_ZLSH_DONOTSETME:-x}" = 'x' ]        \
+                &&    [ "${_ZLSH_DONOTSETME+x}"  = 'x' ]         \
+                &&    [ "${_ZLSH_DONOTSETME:+x}" = ''  ]          \
+                &&    [ "${_ZLSH_DONOTSETME:=y}" = 'y' ]           \
+                &&    [ "${_ZLSH_DONOTSETME}"    = 'y' ]            \
+                &&    [ "${_ZLSH_DONOTSETME-x}"  = 'y' ]             \
+                &&    [ "${_ZLSH_DONOTSETME:-x}" = 'y' ]              \
+                &&    [ "${_ZLSH_DONOTSETME+x}"  = 'x' ]               \
+                &&    [ "${_ZLSH_DONOTSETME:+x}" = 'x' ]                \
+                &&    [ "${_ZLSH_DONOTSETME=z}"  = 'y' ]                 \
+                &&    [ "${_ZLSH_DONOTSETME:=z}" = 'y' ]                  \
+                &&    [ "${_ZLSH_DONOTSETME}"    = 'y' ]                   \
+                                                                            \
+                &&  nargs() {
+                        CHECK distinct variable versus function namespaces
+                        nargs=$#
+
+                        first="${1:-}"
+                        second="${2:-}"
+                        third="${3:-}"
+                        fourth="${4:-}"
+                    }\
+                && CHECK argument passing                      \
+                &&    nargs '' '2 3' 4  && [ "$nargs" -eq  3   ]\
+                                        && [ "$first"  =  ''   ] \
+                                        && [ "$second" = '2 3' ]  \
+                                        && [ "$third"  =  '4'  ]   \
+                && CHECK parameter argument                         \
+                &&    nargs "$_ZLSH_TMP"    && [ "$nargs" -eq  1    ]\
+                                            && [ "$first" = 'NOT OK' ]\
+                && CHECK empty parameter argument                      \
+                &&    _ZLSH_TMP=''                                      \
+                &&    nargs "$_ZLSH_TMP"    && [ "$nargs" -eq   1 ]      \
+                                            && [ "$first"  =   '' ]       \
+                && CHECK no argument                                      \
+                &&    nargs && [ "$nargs" -eq 0 ]                          \
+                                                                            \
+                &&  recursive() {
+                        if [ "${1+x}" ]; then
+                            nargs "$@"
+                        else
+                            CHECK recursion
+                            recursive '' '2 3' 4
+                        fi
+                    }\
+                &&  recursive   && [ "$nargs" -eq  3     ]  \
+                                && [ "$first"  =  ''     ]   \
+                                && [ "$second" =  '2 3'  ]    \
+                                && [ "$third"  =  '4'    ]     \
+                                                                \
+                && CHECK process substitution and printf %s   \
+                &&    [ "$(printf '%s\n' 'OK')" = 'OK' ]       \
+                                                                \
+                &&  is_valid() {
+                        # is_valid desc [str1 [str2 ...]]
+                        # Success if every strN is valid variable identifier
+                        desc="$1"
+                        _n=$#
+                        CHECK shift command
+                        shift
+                        [ $_n -eq $# ] && return 1
+                        CHECK -gt
+                        [ $_n -gt $# ] || return 1
+                        acc=0
+                        CHECK for, continue, and case commands
+                        for arg in "$@"; do
+                            CHECK "$desc" matching "$arg" for '[_[:alpha:]]*'
+                            case "$arg" in
+                                [_[:alpha:]]*) :;;
+                                *) continue;;
+                            esac
+                            CHECK "$desc" matching \
+                                  "$arg" against '*[^_[:alpha:][:digit:]]*'
+                            case "$arg" in
+                                *[^_[:alpha:][:digit:]]*) continue;;
+                                *)  CHECK arithmetic expansion
+                                    acc=$((acc + 1))
+                                    ;;
+                            esac
+                        done
+                        CHECK expected number of loops for number of matches
+                        [ $# -eq "${acc}" ]
+                    }\
+                && CHECK pattern matching                  \
+                &&    is_valid 'var name' one Two _three_ _4\
+                &&  ! is_valid 'bad var name'      '$one'    \
+                &&  ! is_valid 'not good var name' 'one two'  \
+                &&  ! is_valid 'also bad var name' '1_one'     \
+                                                                \
+                && CHECK '.' sourcing command               \
+                &&  ! [ "${_ZLSH_TMP-}" = 'NOT OK' ]         \
+                &&  . <(printf '%s\n' '_ZLSH_TMP="NOT OK"')   \
+                &&    [ "${_ZLSH_TMP-}" = 'NOT OK' ]           \
+                                                                \
+                && CHECK substring removal            \
+                &&    [ "${_ZLSH_TMP#?}"   =  'OT OK' ]\
+                &&    [ "${_ZLSH_TMP#*O}"  =   'T OK' ] \
+                &&    [ "${_ZLSH_TMP##*O}" =      'K' ]  \
+                &&    [ "${_ZLSH_TMP%O*}"  = 'NOT '   ]   \
+                &&    [ "${_ZLSH_TMP%%O*}" = 'N'      ]    \
+                                                            \
+                && CHECK 'var= cmd;' temp params \
+                &&  _zlsh_tmp() {                 \
+                        [ "${_ZLSH_TMP-}" = 'ok' ];\
+                    }                               \
+                &&  ! _ZLSH_TMP='OK' _zlsh_tmp       \
+                &&    _ZLSH_TMP='ok' _zlsh_tmp        \
+                &&    [ "${_ZLSH_TMP-}" = 'NOT OK' ]   \
+                &&  {
+                        # Confirm subshell isolation -- if after subshell exit,
+                        # `true` or `:` will fail, overall check cannot succeed,
+                        # since the `if-then` component block of the `if`
+                        # compound command will not get evaluated, and it is the
+                        # only branch to return 0 (success) from the sanity
+                        # check.
+                        CHECK alias command
+                        # NOTE: We only check if `alias` command doesn't fail
+                        #   here. Checking alias expansion, attempting to
+                        #   renable alias expansions option on failure,
+                        #   re-evaluating a function definition command to let
+                        #   alias expand, and rechecking, is likely not a
+                        #   justified additional complexity for an already
+                        #   pretty complex "sanity-check".
+                        alias ':'='false'   || exit 1
+                        true()   { false; } || exit 1
+
+                        # Output number of `CHECK` commands executed.
+                        printf '%s\n' "${_ZLSH_TMP_CHECKSUM}"
+                    }\
+                ||  return 1
+            )\
+        &&  : CHECK subshell isolation                  \
+        &&  ! [ "${_ZLSH_DONOTSETME+x}" ]                \
+        &&  ! eval CHECK failed isolation >/dev/null 2>&1 \
+        &&    true                                         \
+        ;                                                   \
+        then    : CHECK sanity                     \
+            &&    [ "$_ZLSH_TMP" = 'OK' ]           \
+            &&    [ "$_ZLSH_TMP" = "$_ZLSH_TMP_2" ]  \
+            &&  : CHECK checksum                      \
+            &&    [ "${_ZLSH_TMP_CHECKSUM--1}" -eq 57 ]\
+                                                        \
+            &&  : CHECK unset -v, -f command  \
+            &&    unset -v  _ZLSH_TMP          \
+                            _ZLSH_TMP_2         \
+                            _ZLSH_TMP_CHECKSUM   \
+            &&  ! [ "${_ZLSH_TMP+x}" ]            \
+            &&  ! [ "${_ZLSH_TMP_2+x}" ]           \
+            &&  ! [ "${_ZLSH_TMP_CHECKSUM+x}" ]     \
+            &&    unset -f  _zlsh_tmp_fail           \
+                            _zlsh_tmp_pass            \
+            &&  ! eval _zlsh_tmp_pass >/dev/null 2>&1  \
+                                                        \
+            &&  return 0
+            return 1
+        elif :; then return 1
+        else return 1
+        fi
+    return 1
+}
+
+# `zlsh_prtbl_check_eval "$command"`
+#
+# Checks (in a silent subshell) if a `$command` would eval successfully.
+#
+# Used to check non-portable capabilities, including non-portable syntax.
+#
+# Exit Status: non-zero on failure or no arguments.
+#
+# NOTE: External side-effects are invisible to subshell isolation and will
+#       persist. The command (i.e. arguments to this function) should not have
+#       any external side-effects.
+#
+zlash_prtbl_check_eval() { [ ${1+x} ] && (eval "$@") >/dev/null 2>&1; }
+
+# `zlsh_prtbl_echo [arg ...]`
+#
+# Portable expected `echo` behavior, avoiding `echo` pitfalls.
+#
+# Exit Status: non-zero on failure.
+#
+# NOTE: This should NOT be used to transfer data, but to communicate something
+#       to the user, where possibility of a corrupted message is preferable to
+#       nothing, and retries or alternatives are either not possible or don't
+#       make sense. `printf` write failure here will not short-circuit remaining
+#       arguments write attempts, in case failure cause is transient.
+#
+zlash_prtbl_echo() {
+    _ZLSH_TMP_STATUS=0 || return 1
+    if [ ${1+x} ]; then
+        for _ZLSH_TMP_PARAM; do
+            printf '%s ' "$_ZLSH_TMP_PARAM" || _ZLSH_TMP_STATUS=1
+        done
+        _ZLSH_TMP_PARAM= || ZLSH_TMP_STATUS=1
+    fi;
+    printf '\n' || _ZLSH_TMP_STATUS=1
+    return $_ZLSH_TMP_STATUS
+}
+
+# `_unsafe_zlsh_prtbl_var_copy` *src_varname* *dst_varname*
+#
+#     Copy value of `src_varname` variable into `dst_varname` variable, when
+#     better means aren't available.
+#
+#     > $ src_varname='value'
+#     > $ dst_varname=''
+#     > $ _unsafe_zlsh_prtbl_var_copy src_varname dst_varname
+#     > $ echo "$dst_varname"
+#     > value
+#
+#     **CODE INJECTION** Vulnerabe! Users should never call this function.
+#         Callers must either own or sanitize both arguments. Many shells will
+#         expand arithmetic and/or array subscript contexts recursively!
+#
+_unsafe_zlsh_prtbl_var_copy() { eval "$2=\"\$$1\""; }
+
+# `_unsafe_zlsh_prtbl_ref_deref` *nameref_varname* *varname*
+#
+#     Dereference `nameref_varname` as `varname`. For shells that are capable of
+#     automatic namerefs, the `nameref_varname` variable must not be of an
+#     automatic nameref type. (When sticking to POSIX syntax, they never are.)
+#
+#     > $ src_varname='value'
+#     > $ nameref_varname='src_varname'
+#     > $ varname=''
+#     > $ _unsafe_zlsh_prtbl_ref_deref nameref_varname varname
+#     > $ echo "$varname"
+#     > value
+#
+_unsafe_zlsh_prtbl_ref_deref() {
+    _unsafe_zlsh_prtbl_var_copy "$1" _ZLSH_TMP \
+        && eval "$2=\"\$${_ZLSH_TMP}\""         \
+        && _ZLSH_TMP=''  # `unset` is not guaranteed prior probing.
+}
+
+# `_zlsh_prtbl_str_eq` *str1* *str2*
+#
+#     Is `str1` equal `str2` alphanumerically?
+#
+#     > $ var='value'
+#     > $ _zlsh_prtbl_str_eq "$var" 'value' && echo ok || echo FAILED
+#     > ok
+#
+_zlsh_prtbl_str_eq() {
+    # Using a marker `x` to guard against old shell expansion bugs.
+    [ "x$1" = "x$2" ]
+}
+
+# `_unsafe_zlsh_prtbl_str_pat` *str* *pat*
+#
+#     Is `str` matching `pat` shell pattern?
+#
+#     > $ var='value'
+#     > $ _unsafe_zlsh_prtbl_str_eq "$var" 'value' && echo ok || echo FAILED
+#     > ok
+#
+_unsafe_zlsh_prtbl_str_pat() {
+    case "$1" in
+        $2) return 0;;
+    esac
+    return 1
+}
+
+# Even status negation (`!`) cannot be guaranteed prior probing. And a portable
+# negating wrapper (a higher-order multivariadic function) cannot be defined
+# before portable quoting is. But we do need a basic alternative for "is string
+# not empty" to implement portable quoting functions.
+_unsafe_zlsh_prtbl_str_neq() {
+    if _unsafe_zlsh_prtbl_str_eq "$1" "$2"
+    then
+        return 1;
+    else
+        return 0;
+    fi
+}
+
+_unsafe_zlsh_prtbl_str_npat() {
+    if _unsafe_zlsh_prtbl_str_pat "$1" "$2"
+    then
+        return 1;
+    else
+        return 0;
+    fi
+}
+
+# `_zlsh_prtbl_get_shqstr` *str*
+#
+#     Shell single-quote a `str` string into `REPLY` variable, which will
+#     contain a shell-reusable single-quoted string suitable for `eval`.
+#
+#     Usable in absense of `${VAR@Q}`, `${(qq)VAR}`, `typeset -p VAR`, and
+#     `print %q VAR` capabilities.
+#
+#     > $ string="it's a string"
+#     > $ _zlsh_prtbl_get_shqstr "$string"
+#     > $ echo "$REPLY"
+#     > 'it'\''s a string'
+#     > $ numargs() { echo $#; }
+#     > $ numargs $REPLY; eval "numargs $REPLY"
+#     > 3
+#     > 1
+#
+_zlsh_prtbl_get_shqstr() {
+    _ZLSH_TMP="$1"  # unquoted string
+    _ZLSH_TMP_2=''    # single-quote-escaped string
+    while _unsafe_zlsh_prtbl_str_neq "$_ZLSH_TMP" ''; do
+        _ZLSH_TMP_3="${_ZLSH_TMP%${_ZLSH_TMP#?}}"  # first character
+        _ZLSH_TMP="${_ZLSH_TMP#?}"                 # first character removed
+        _unsafe_zlsh_prtbl_str_eq "$_ZLSH_TMP_3" \'  \
+            && _ZLSH_TMP_2="${_ZLSH_TMP_2}'\''"       \
+            || _ZLSH_TMP_2="${_ZLSH_TMP_2}$_ZLSH_TMP_3"
+    done
+    REPLY="'${_ZLSH_TMP_2}'"
+    _ZLSH_TMP_2=''
+    _ZLSH_TMP_3=''
+}
+
+_zlsh_init() {
     ZLASH_VERSION=0.1
 
 #------------------------------------------------------------------------------
 ### 2.    CONFIGURATION OPTIONS
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 2.1. General Configuration Options
 #
-
     # Auto-update `SHELL` environment variable for interactive shells.
     #
+    # Some systems, when a user launchs a shell that's different from the one
+    # specified for them under `/etc/passwd` will change SHELL, while other
+    # systems will not.
+    #
     # Some tools use `SHELL` value to determine what completions to install,
-    # resulting in what user may or may not be expecting. If you are using both
-    # Zsh and Bash, and want your "prefered" shell to be the current one,
-    # setting this to "always" maybe helpful.
+    # resulting in what user may or may not be expecting. If you are using
+    # multiple shells regularly, and want your "prefered" shell to be the
+    # current one, setting this to "always" maybe helpful.
     #
     # A setting of `once` maybe helpful for situations where you run different
-    # `main` sessions of Bash and Zsh, and want `SHELL` to not change for
-    # different subshell types.
+    # "main" session(s) of different types of shells, and want `SHELL` to not
+    # change for other shell types launched from the "main" ones.
     #
     # Valid values are:
     #
@@ -266,7 +859,7 @@ _compat_init() {
     #       needed in section before shell is discriminated and if this is
     #       sourced more than once by shell with `nounset` set. (which we do
     #       set)
-    : ${ZLASH_SHELL_UPDATE:="always"}
+    : ${ZLASH_SHELL_UPDATE:='always'}
     export ZLASH_SHELL_UPDATE
 
     # Default indent level
@@ -274,32 +867,45 @@ _compat_init() {
 
     # Do not clear these environment variables when performing environment
     # scrubbing by default. A string containing variable names separated by
-    # colons (`:`).
-    : ${ZLASH_PROTECTED_VARS:-"HOME"}
+    # spaces (` `).
+    : ${ZLASH_PROTECTED__ZLASH_VARS:='HOME'}
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 2.2. Optional External Tools
+#
     # Optional Tools. A tool executable may have different names. Possibilities
     # are separated by colons (`:`).
+    #
+    # After initialization, each tool defined by the variable form of
+    # `ZLASH_TOOL_*` will have a function defined in the form `_zlsh_cmd_*` with
+    # a possible fallback if no executable was found. However, exit status
+    # should always be checked, since if tool wasn't found, the function will
+    # return 0. The search for a concrete executable and a possible fallback is
+    # done lazily once.
 
     # Bat, if available, is used for syntax highlighting.
-    : ${ZLASH_TOOL_BAT:="bat:batcat"}
-    : ${ZLASH_TOOL_BAT_THEME:="gruvbox-dark"}
+    : ${ZLASH_TOOL_BAT:='bat:batcat'}
+    : ${ZLASH_TOOL_BAT__THEME:='gruvbox-dark'}
 
     # Augeas, if available, is used for structured manipulation of configuration
     # files in many arcane *nix formats.
-    : ${ZLASH_TOOL_AUGTOOL:="augtool"}
-    : ${ZLASH_TOOL_AUGMATCH:="augmatch"}
-    : ${ZLASH_TOOL_AUGPRINT:="augprint"}
-    : ${ZLASH_TOOL_AUGPARSE:="augparse"}
+    : ${ZLASH_TOOL_AUGTOOL:='augprint'}
+    : ${ZLASH_TOOL_AUGMATCH:='augprint'}
+    : ${ZLASH_TOOL_AUGPRINT:='augprint'}
+    : ${ZLASH_TOOL_AUGPARSE:='augparse'}
 
-    : ${ZLASH_TOOL_LSOF:="lsof"}
+    : ${ZLASH_TOOL_LSOF:='lsof'}
 
-    : ${ZLASH_TOOL_OSQUERY:="osqueryi"}
+    # Pipe-Viewer
+    : ${ZLASH_TOOL_PV:='pv'}
+
+    : ${ZLASH_TOOL_OSQUERY:='osqueryi'}
 
     # Tree-sitter, if available, is used for ASTs of various languages it
     # supports, including Bash AST of Zlash-supported shell languages, for deep
     # dynamic introspection, generation, and even interpretation and relational
     # reasoning over dynamic code, or implementation "hole filling".
-    : ${ZLASH_TOOL_TREESITTER:="tree-sitter:tree-sitter-cli"}
+    : ${ZLASH_TOOL_TREESITTER:='tree-sitter:tree-sitter-cli'}
 
     # TODO
     #
@@ -309,6 +915,25 @@ _compat_init() {
     #   - IPython
     #   - Powershell
     #   ...
+
+    # Standard tools expected by the GNU toolchain. See:
+    # https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf.html#Particular-Programs
+    #
+    : ${ZLASH_TOOL_SED:='gsed:sed'}
+    : ${ZLASH_TOOL_AWK:='gawk:mawk:nawk:awk'}
+    : ${ZLASH_TOOL_GREP:='grep:ggrep'}
+    : ${ZLASH_TOOL_EGREP:='egrep:gegrep'}
+    : ${ZLASH_TOOL_FGREP:='fgrep:gfgrep'}
+    : ${ZLASH_TOOL_MKDIR_P:='mkdir -p'}
+    : ${ZLASH_TOOL_LN_S:='ln -s'}
+    : ${ZLASH_TOOL_LEX:='flex:lex'}
+    : ${ZLASH_TOOL_YACC:='bison -y:byacc:yacc'}
+    : ${ZLASH_TOOL_RANLIB:='ranlib'}
+    : ${ZLASH_TOOL_INSTALL:='install'}
+
+    # More Standard Tools
+    # TODO: 
+    #
 
     # TODO
     # These tools, if available, will greatly speed up functionality that
@@ -320,74 +945,1108 @@ _compat_init() {
     #   - Sqlite
 
     # `true` or not.
-    : ${_ZLASH_IGNORE_ASSERTS:=false}
+    : ${ZLASH_IGNORE_ASSERTS:=false}
 
-    # New Identifiers Configuration
-    #
-    # NOTE: This must be a valid variable identifier prefix uneder all supported
-    #       shells. (or modified during shell specialization accordingly)
-    : ${_ZLASH_IGEN_PREFIX:="_"}
-    # Every managed object will be getting a unique identifier constrained by
-    # valid variable name format. Our convention is concetenation of this prefix
-    # with a decimal number for logical variables, and hexadecimal number for
-    # all the other objects, like so:
-    #   - logical variables: _1 _2 _255
-    #   - all other objects: _0x1 _0x2 _0xff
-
-    # Initial Identifier Generating Counter
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 2.3. Default Providers Configuration
+#
+# `Provider`s create objects.
+#
+# Every Zlash object will be getting a unique identifier constrained by
+# valid variable name format.
+#
+    # General Identifier-generating counter and prefix.
     : ${_ZLASH_IGEN:=0}
+    : ${_ZLASH_IGEN_PREFIX:='_0x'}
 
-    # Initial Logical Identifier Generating Counter
-    : ${_ZLASH_LIGEN:=1}
+    # Reference Provider
+    : ${_ZLASH_IGEN_REF:=0}
+    : ${_ZLASH_IGEN_REF_PREFIX:='_0r'}
+
+    # Base64 Provider
+    : ${_ZLASH_IGEN_B64_PREFIX:='_0b'}
+    : ${_ZLASH_IGEN_B64:=0}
+
+    # Binary File Provider
+    : ${_ZLASH_IGEN_BIN_PREFIX:='_0f'}
+    : ${_ZLASH_IGEN_BIN:=0}
+
+    # Logic Provider
+    : ${_ZLASH_IGEN_LOG_PREFIX:='_'}
+    : ${_ZLASH_IGEN_LOG:=1}
 
 #------------------------------------------------------------------------------
-### 3.    SHELL TYPE AND VERSION IDENTIFICATION
+###  3.    SHELL TYPE AND VERSION IDENTIFICATION
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #
+    # A word representing the type of the shell sourcing this, like `bash`,
+    # `zsh`, `ksh93`, `dash`, etc...
+    : ${ZLASH_SH_TYP:='unknown'}
 
-    # An internal string representing the
-    # Type of the shell sourcing this.
-    : ${ZLASH_SHELL_TYP:=unknown}
-
-    # An internal string representing
-    # major dot minor decimal numbered version of the current shell,
-    # used by shell-agnosting version guarding code.
-    : ${ZLASH_SHELL_VER:=0.0}
+    # An string representing major dot minor decimal numbered version of the
+    # current shell, used by shell-agnosting shell type and version guarding.
+    : ${ZLASH_SH_VER:=0.0}
 
     # An internal string representing the
     # fullpath of the current shell.
-    : ${_ZLASH_SHELL_EXE:="$0"}
+    : ${ZLASH_SH_EXE:="$0"}
 
-    # NOTE: On adding new shell type support.
-    #       `_posix_test_am<type>` to work correctly, the following requirements
-    #       must be met:
-    #
-    #         - parts of the function before <type> is determined must be POSIX
-    #           compliant
-    #
-    #         - `Test-Am<type>` testing conditions:
-    #
-    #             - positive self condition
-    #
-    #             - positive exclusion conditions of every other Zlash-supported
-    #               shell type
-    #
-    #         - positive self-exclusion condition added to every other
-    #           Zlash-supported shell type test
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#### 3.1.  Shell Capabilities Probes
+#
+# `zlash_cap_`-prefixed, all POSIX-compliant no-argument silent static
+# evalualtion tests as non-exhaustive empirical witnesses of various shell
+# capabilities. Style of these is very different form the main definitions,
+# since this needs to be very defensive and portable.
+#
+# Each tests defines ZLASH_CAPREQS with space-separated required
+# capability names, so minimal failing dependent capability can be traced on
+# capability test failure.
+#
+# Each test defines ZLASH_CAPDSC as a short description or example of
+# the capability, which can be used when reporting on capability.
+#
+# Capability names are test function names with `zlash_cap_` prefix
+# stripped.
+#
+# We are excluding "POSIX-compliant" shells that weren't updated since late
+# 1980s. If we have function definitions, we also have basic parameter
+# expansions, basic string and file testing, POSIX-required builtins (., :,
+# break, continue, eval, exec, exit, export, readonly, return, set, shift, trap,
+# unset) and utilities (alias, echo, printf, times, type, ulimit, etc...),
+# redirections, compound commands like if, case-patterns, for loops, command
+# lists, status negation, pipelines, groups, subshells.
+#
+# NOTE: `_unsafe_`-prefixed functions should be called with controlled or
+#       sanitized arguments.
+#
 
-    # `setopt` is not a Bash builtin.
-    # `ZSH_EVAL_CONTEXT` and `ZSH_SUBSHELL` are readonly variables in Zsh.
-    # `.sh.version` is an invalid variable name in Zsh.
-    _compat_test_am_zsh() {
-        # shellcheck disable=SC2034 # foo appears unused. Verify it or export it.
-        if ["x$(builtin whence -w builtin 2>/dev/null)" = "xbuiltin: builtin"]\
-        && ["x$(builtin whence -w setopt  2>/dev/null)" = "xsetopt: builtin" ]\
-        && ! ( eval '[ -n "${.sh.version}" ]'        ) >/dev/null 2>&1        \
-        && ! (    ZSH_EVAL_CONTEXT=""                ) >/dev/null 2>&1        \
-        && ! ( (( ZSH_SUBSHELL=0 , ZSH_SUBSHELL++ )) ) >/dev/null 2>&1
+##### 3.1.1. Probing Capabilities Private Interface
+#
+
+##### 3.1.1. Subshell Behavior Probes
+#
+    # Reset OUT reporting variables. (also a capabilities testing observability
+    # point)
+    zlash_captest_fixture() {
+
+        # A short description and/or example snippet of capability.
+        ZLASH_CAPDESC=''
+
+        # Capability dependencies (space separated) for finding a more
+        # fundamental failing capability on failure.
+        ZLASH_CAPREQS=''
+
+        # Capability provisions on success (space separated).
+        # TODO: explain format and use.
+        ZLASH_CAPFOR=''
+    }
+
+    # Subshell execution environment should isolated from enclosing execution
+    # environment.
+    zlash_cap_sh_subsh_env() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='subshell execution environment isolation'
+
+        # Subshell to not pollute execution environment with temporary variables
+        # and functions before we know our capabilities.
+        if (
+            # if _ZLASH_VAR has been set as readonly, our tests are invalid, so
+            # report no capability. This early, we don't yet know our
+            # capabilities, so we should attempt to create a non-clashing
+            # variable name dnamically. Similarly, some shells can set functions
+            # readonly, preventing redefinition.
+            _ZLASH_VAR=""                               \
+                && eval '_zlash_func() { _ZLASH_VAR="OUTER"; }'\
+                && [ "${_ZLASH_VAR:-}" = "" ]             \
+                && _zlash_func                                   \
+                && [ "${_ZLASH_VAR:-}" = "OUTER" ]          \
+                && _ZLASH_VAR=""                             \
+                && (
+                    # Subshell should inherit outer execution environment.
+                    [ "${_ZLASH_VAR:-}" = "" ] \
+                        && _zlash_func                \
+                        || return 1
+
+                    # Redefine function
+                    _zlash_func() { _ZLASH_VAR="INNER"; }
+
+                    # Last call should have been of the outer function, then
+                    # test the overriden, inner call.
+                    [ "${_ZLASH_VAR:-}" = "OUTER" ]    \
+                        && _zlash_func                        \
+                        && [ "${_ZLASH_VAR:-}" = "INNER" ]
+                )\
+                && [ "${_ZLASH_VAR:-}" = "" ]  \
+                && _zlash_func                        \
+                && [ "${_ZLASH_VAR:-}" = "OUTER" ]
+        ); then
+            ZLASH_CAP_SH_SUBSH_ENV=true
+        else
+            ZLASH_CAP_SH_SUBSH_ENV=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Shells may or may not fork (to rely on OS) to achieve isolated execution
+    # environment from the enclosing execution environment. This tests for the
+    # correct behavior of the (possibly counter-intuitive) top-level return in a
+    # subshell: it should exit subshell setting status of subshell to the passed
+    # value, not exit the enclosing function.
+    zlash_cap_sh_subsh_ret() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='correct subshell return behavior'
+
+        # Status of the last command in subshell is the status of the subshell,
+        # same as with functions, which here is the compound logic command.
+        if (
+            # Top-level return in a subshell should not return from enclosing
+            # function. The `||:;` construct ensures a preceeding command, if
+            # failed, will not short-circuit the function.
+            _false()    { ( return 0; ) ||:; return 1; }
+            _true()     { ( return 1; ) ||:; return 0; }
+
+            # Top-level return in a subshell should exit subshell with its
+            # value as status.
+            _is_false() { ( return 1 ||:; exit 0; ); }
+            _is_true()  { ( return 0 ||:; exit 1; ); }
+
+            _true && ! _false && ! _is_false && _is_true
+        ); then
+            ZLASH_CAP_SH_SUBSH_RET=true
+        else
+            ZLASH_CAP_SH_SUBSH_RET=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+##### 3.1.2. True/False Exit Status Logic
+#
+
+    zlash_cap_sh_truefalse() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='false || true  # exit status logic'
+
+        if true && ! false; then
+            ZLASH_CAP_SH_TRUEFALSE=true
+        else
+            ZLASH_CAP_SH_TRUEFALSE=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Simple enough to directly provide the missing utilities.
+    if ! zlash_cap_sh_truefalse; then
+        true()  { return 0; }
+        false() { return 1; }
+    fi
+
+##### 3.1.2. Unset Behavior
+#
+# see: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#unset
+#
+    # Unsafe means arguments must be either controlled or sanitized.
+    # Used to test variations of variable removal.
+    _unsafe_zlash_cap_sh_rm_var() {
+        (
+            _ZLASH_VAR='OK'                    \
+                && [ "${_ZLASH_VAR:-}" = 'OK' ] \
+                && eval "$1 _ZLASH_VAR"          \
+                && [ "${_ZLASH_VAR:-}" = '' ]
+        )
+    }
+
+    # `unset` variable delition capability.
+    zlash_cap_sh_unset() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='unset VAR  # removes variable `VAR`'
+        ZLASH_CAPFOR='rm_var_cmd'
+
+        if _unsafe_zlash_cap_sh_rm_var 'unset'; then
+            ZLASH_CAP_SH_UNSET=true
+        else
+            ZLASH_CAP_SH_UNSET=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # `unset -v` explicit variable deletion capability.
+    zlash_cap_sh_unset_v() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='unset -v VAR  # removes variable `VAR`'
+        ZLASH_CAPFOR='rm_var_cmd'
+
+        if _unsafe_zlash_cap_sh_rm_var 'unset -v'; then
+            ZLASH_CAP_SH_UNSET_V=true
+        else
+            ZLASH_CAP_SH_UNSET_V=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Provides $ZLASH_CMD_RM_VAR on success.
+    zlash_cap_cmd_rm_var() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='$ZLASH_CMD_RM_VAR VAR  # remove variable VAR'
+
+        # Prefer the explicit variants.
+        if ${ZLASH_CAP_SH_UNSET_V:-false} \
+        ||   zlash_cap_sh_unset_v
         then
-            ZLASH_SHELL_TYP="zsh"
-            eval 'ZLASH_SHELL_VER=${(j:.:)${${(s:.:)ZSH_VERSION}[@]:0:2}}'\
+            ZLASH_CMD_RM_VAR='unset -v'
+        elif ${ZLASH_CAP_SH_UNSET:-false} \
+        ||     zlash_cap_sh_unset
+        then
+            ZLASH_CMD_RM_VAR='unset'
+        else
+            # We could do something like:
+            #
+            #   _unsafe_zlash_rm_var() { eval "\$${1}=''"; }
+            #   ZLASH_CMD_RM_VAR='_unsafe_zlash_rm_var'
+            #
+            # but failure still would need to be reported, and still more cap
+            # testing would need to be tested, like scoping corner cases.
+            ZLASH_CAP_CMD_RM_VAR=false
+            return 1
+        fi
+        ZLASH_CAP_CMD_RM_VAR=true
+    }
+
+    # Function deleting. Succeed only if deleted function call fails AND call
+    # did not have deleted function's effect.
+    zlash_cap_rm_fun_unset_f() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='unset -f fun  # removes function `fun`'
+
+        if (
+            _ZLASH_VAR=""                            \
+                && eval '_zlash_func() { _ZLASH_VAR="OK"; }'\
+                && [ "${_ZLASH_VAR:-}" = "" ]          \
+                && _zlash_func                                \
+                && [ "${_ZLASH_VAR:-}" = "OK" ]          \
+                && _ZLASH_VAR=""                          \
+                && [ "${_ZLASH_VAR:-}" = "" ]              \
+                && eval 'unset -f _zlash_func'                    \
+                && ! eval '_zlash_func'                            \
+                && [ "${_ZLASH_VAR:-}" = "" ]
+        ); then
+            ZLASH_CAP_RM_FUN_UNSET_F=true
+        else
+            ZLASH_CAP_RM_FUN_UNSET_F=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Unset NAME removes function NAME if variable NAME is unset.
+    # POSIX specifies this behavior as undefined.
+    zlash_cap_rm_fun_unset() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='unset name  # removes variable or function `name`'
+
+        if (
+            # Variable and function with same name
+            _zlash_name=""                                 \
+                && eval '_zlah_name() { _zlash_name="OK"; }'\
+                && [ "${_zlash_name:-}" = "" ]               \
+                && _zlash_name                                \
+                && [ "${_zlash_name:-}" = "OK" ]               \
+                && eval 'unset _zlash_name'                     \
+                && [ "${_zlash_name:-}" = "" ]                   \
+                && eval '_zlash_name'                             \
+                && [ "${_zlash_name:-}" = "OK" ]                   \
+                && unset _zlash_name                                \
+                && eval 'unset _zlash_name'                          \
+                && [ "${_zlash_name:-}" = "" ]                        \
+                && eval '_zlash_name'                                  \
+                && [ "${_zlash_name:-}" = "" ]
+        ); then
+            ZLASH_CAP_RM_FUN_UNSET=true
+        else
+            ZLASH_CAP_RM_FUN_UNSET=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Provides $ZLASH_CMD_RM_FUN
+    zlash_cap_cmd_rm_fun() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='$ZLASH_CMD_RM_FUN fun  # removes function `fun`'
+
+        # Prefer explicit.
+        if [ "${ZLASH_CAP_RM_FUN_UNSET_F:-}" = 'true' ] \
+        || zlash_cap_rm_fun_unset_f
+        then
+            ZLASH_CMD_RM_FUN='unset -f'
+        elif [ "${ZLASH_CAP_RM_FUN_UNSET:-}" = 'true' ] \
+        || zlash_cap_rm_fun_unset
+        then
+            ZLASH_CMD_RM_FUN='unset'
+        else
+            ZLASH_CAP_CMD_RM_FUN=false
+            return 1
+        fi
+        ZLASH_CAP_CMD_RM_FUN=true
+    } >/dev/null 2>&1
+
+##### 3.1.4. Namespaces
+
+    zlash_cap_sh_ns_funvar_distinct() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='Namespace is not shared between functions and variables'
+
+        (f () { :; }; f=; f)
+    } >/dev/null 2>&1
+
+##### 3.1.3. Local Variables?
+
+    _unsafe_zlash_cap_sh_local_var() {
+        ZLASH_CAPDSC="$1 VAR  # set VAR as function-local variable"
+        (
+            _ZLASH_VAR='OUTER' || return 1
+            _zlash_func() {
+                [ "$_ZLASH_VAR" = 'OUTER' ]   \
+                    && eval "$1 _ZLASH_VAR"    \
+                    && _ZLASH_VAR='INNER'       \
+                    && [ "$_ZLASH_VAR" = 'INNER' ]
+            }
+            _zlash_func \
+                && [ "$_ZLASH_VAR" = 'OUTER' ]
+        )
+    }
+
+    zlash_cap_sh_local() {
+        zlash_captest_fixture
+        if _unsafe_zlash_cap_local 'local'; then
+            ZLASH_CAP_SH_LOCAL=true
+        else
+            ZLASH_CAP_SH_LOCAL=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    zlash_cap_sh_local_declare() {
+        zlash_captest_fixture
+        if _unsafe_zlash_cap_local 'declare'; then
+            ZLASH_CAP_SH_LOCAL_DECLARE=true
+        else
+            ZLASH_CAP_SH_LOCAL_DECLARE=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    zlash_cap_sh_local_typeset() {
+        zlash_captest_fixture
+        if _unsafe_zlash_cap_local 'typeset'; then
+            ZLASH_CAP_SH_LOCAL_TYPESET=true
+        else
+            ZLASH_CAP_SH_LOCAL_TYPESET=false
+            return 1
+        fi
+    } >/dev/null 2>&1
+
+    # Provides $ZLASH_CMD_LOCAL_VAR on success.
+    zlash_cap_cmd_local_var() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='$ZLASH_CMD_LOCAL_VAR var  # declare function-local `var`'
+
+        # `local` is most specific. `typeset` is most portable.
+        if ${ZLASH_CAP_SH_LOCAL:-false} \
+        ||   zlash_cap_sh_local
+        then
+            ZLASH_CMD_LOCAL_VAR='local'
+        elif ${ZLASH_CAP_SH_LOCAL_DECLARE:-false} \
+        ||     zlash_cap_sh_local_declare
+        then
+            ZLASH_CMD_LOCAL_VAR='declare'
+        elif ${ZLASH_CAP_SH_LOCAL_TYPESET:-false} \
+        ||     zlash_cap_sh_local_typeset
+        then
+            ZLASH_CMD_LOCAL_VAR='typeset'
+        else
+            ZLASH_CAP_CMD_LOCAL_VAR=false
+            return 1
+        fi
+        ZLASH_CAP_CMD_LOCAL_VAR=true
+    } >/dev/null 2>&1
+
+##### 3.1.4. Alternative Function Definition Synatx?
+#
+
+    zlash_cap_sh_altfundef() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='function name {...}'
+
+        if (
+            _ZLASH_VAR='ONE'                                        \
+                && eval 'function _zlash_func { _ZLASH_VAR="TWO"; }' \
+                && [ "${_ZLASH_VAR:-}" = 'ONE' ]                      \
+                && _zlash_func                                         \
+                && [ "${_ZLASH_VAR:-}" = 'TWO' ]
+        ); then
+            ZLASH_CAP_SH_ALTFUNDEF=true
+        else
+            ZLASH_CAP_SH_ALTFUNDEF=false
+            return 1
+        fi
+    }
+
+    zlash_cap_sh_mixfundef() {
+        zlash_captest_fixture
+        ZLASH_CAPDSC='function name () {...}'
+
+        if (
+            _ZLASH_VAR='ONE'                                           \
+                && eval 'function _zlash_func () { _ZLASH_VAR="TWO"; }' \
+                && [ "${_ZLASH_VAR:-}" = 'ONE' ]                         \
+                && _zlash_func                                            \
+                && [ "${_ZLASH_VAR:-}" = 'TWO' ]
+        ); then
+            ZLASH_CAP_SH_MIXFUNDEF=true
+        else
+            ZLASH_CAP_SH_MIXFUNDEF=false
+            return 1
+        fi
+    }
+
+##### 3.1.5. Global or Non-local Variables?
+#
+
+    _unsafe_zlash_cap_global_var() {
+        ZLASH_CAPREQS='cmd_local_var'
+
+        ${ZLASH_CAP_CMD_LOCAL_VAR:-false} \
+            || zlash_cap_cmd_local_var     \
+            && (
+                _ZLASH_VAR='OUTER' || return 1
+                _zlash_func() {
+                    [ "$_ZLASH_VAR" = 'OUTER' ]         || return 1
+                    eval "$_ZLASH_LOCAL_CMD _ZLASH_VAR" || return 1
+                    _ZLASH_VAR='INNER'                  || return 1
+                    [ "$_ZLASH_VAR" = 'INNER' ]         || return 1
+
+                    # Set the outer value
+                    eval 'typeset -g _ZLASH_VAR="NEW"' || return 1
+
+                    # Inner value was not affected
+                    [ "$_ZLASH_VAR" = 'INNER' ]  || return 1
+                }
+
+                [ "$_ZLASH_VAR" = 'OUTER' ]  || return 1
+                _zlash_func || return 1
+
+                # Outer value was changed
+                [ "$_ZLASH_VAR" = 'NEW' ]
+            )
+    }
+
+
+##### 3.1.4 Indexed Arrays?
+
+    _unsafe_test_cap_ixarr() {
+        ZLASH_CAPDSC="$1 VAR  # set VAR as indexed array"
+        ZLASH_CAPREQS=""
+        (
+            eval "$1 _ZLASH_VAR"              || return 1
+            eval '_ZLASH_VAR=(one two three)' || return 1
+
+            # ${_ZLASH_VAR[*]} and (in scalar context) ${_ZLASH_VAR[@]}
+            # concatenate array with the first character of IFS as the
+            # separator.
+            IFS=' ' || return 1
+            eval '[ "${_ZLASH_VAR[*]}" = "one two three" ]' || return 1
+            eval '[ "${_ZLASH_VAR[@]}" = "one two three" ]' || return 1
+
+            # Number of elements.
+            eval '[ "${#_ZLASH_VAR[@]}" -eq 3 ]' || return 1
+
+            # Subscript `1` is ether first or second element.
+            eval  '
+                [ "${_ZLASH_VAR[1]}" = "one" ] || \
+                [ "${_ZLASH_VAR[1]}" = "two" ]
+            ' || return 1
+
+            # Appending elements
+            eval '_ZLASH_VAR+=(four five)' || return 1
+            [ "${#_ZLASH_VAR[@]}" -eq 5 ]  || return 1
+            [ "${_ZLASH_VAR[*]}" = 'one two three four five' ]
+
+            # Removing elements
+            _unsafe_unset_v '_ZLASH_VAR[1]' || return 1
+            [ "${#_ZLASH_VAR[@]}" -eq 4 ]   || return 1
+            [ "${_ZLASH_VAR[*]}" = 'one three four five' ]     \
+                || [ "${_ZLASH_VAR[*]}" = 'two three four five' ]
+        )
+    }
+
+    # `delcare -a ARR` sets zero-based indexed array attribute on variable ARR.
+    zlash_cap_ixarr_declare_a() {
+        _unsafe_test_cap_ixarr 'declare -a'
+    } >/dev/null 2>&1
+
+    # `delcare -a ARR` sets zero-based indexed array attribute on variable ARR.
+    zlash_cap_ixarr_typeset_a() {
+        _unsafe_test_cap_ixarr 'typeset -a'
+    } >/dev/null 2>&1
+
+    zlash_cap_ixarr() {
+        zlash_cap_ixarr_declare_a \
+            || zlash_cap_ixarr_typeset_a
+    } >/dev/null 2>&1
+
+    if zlash_cap_ixarr_declare_a; then
+        :
+    fi
+
+##### 3.1.1 How does shell report type of a command?
+
+    # Bash and Ksh variants
+    zlash_cap_builtin_type_ta() {
+        ZLASH_CAPDSC='type -ta return # *builtin*'
+        ZLASH_CAPREQS=""
+        if eval 'case "$(type -ta return)" in
+                    *builtin*) return 0;;
+                    *) return 1;;
+                esac'
+        then
+            case "$(type -ta type)" in
+                *builtin*) return 0;;
+            esac
+        fi
+        return 1
+    } >/dev/null 2>&1
+
+    # Zsh
+    zlash_cap_builtin_whence_wa() {
+        ZLASH_CAPDSC='whence -wa return # *builtin*'
+        ZLASH_CAPREQS=""
+        if eval 'case "$(whence -wa return)" in
+                    *builtin*) return 0;;
+                    *) return 1;;
+                esac'
+        then
+            case "$(whence -wa whence)" in
+                *builtin*) return 0;;
+            esac
+        fi
+        return 1
+    } >/dev/null 2>&1
+
+    zlash_cap_builtin_lists_builtins() {
+        ZLASH_CAPDSC='builtin lists builtins'
+        ZLASH_CAPREQS=""
+        (
+            eval 'OUT=$(builtin)' || return 1
+            case "$OUT" in
+                *return*) return 0;;
+            esac
+            return 1
+        )
+    } >/dev/null 2>&1
+
+    # NOTE: Not a general version. Just an initialization helper, as argument is
+    #       not sanitized, so must be controlled.
+    _unsefe_test_word_isa() {
+        if zlash_cap_builtin_type_ta; then
+            _unsefe_test_word_isa() {
+                case "$(type -ta "$1")" in
+                    *"$2"*) return 0;;
+                    *) return 1;;
+                esac
+            }
+        elif zlash_cap_builtin_whence_wa; then
+            _unsefe_test_word_isa() {
+                case "$(whence -wa "$1")" in
+                    *"$2"*) return 0;;
+                    *) return 1;;
+                esac
+            }
+        else
+            # NOTE: Other variants don't have a reliable way to query type of a
+            #       command. Not including all types means shadowing is too
+            #       effective, while allowing path of executables in output
+            #       enables pattern injection, (like containing `builtin` as a
+            #       path substring) making test unreliable.
+            _unsefe_test_word_isa() {
+                echo 'ERROR: No "builtin_type_ta" or "builtin_whence_wa"' \
+                     'capabilities!' >/dev/stderr
+                return 1
+            }
+        fi
+        _unsefe_test_word_isa "$1" "$2"
+    }
+
+    zlash_cap_keyword_is_keyword() {
+        ZLASH_CAPDSC='keywords like "if" are "keyword"'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa if keyword
+    } >/dev/null 2>&1
+
+    zlash_cap_keyword_is_reserved() {
+        ZLASH_CAPDSC='keywords like "if" are "reserved"'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa if reserved
+    } >/dev/null 2>&1
+
+    # Capability testing helper functions:
+    #
+    #   - _unsefe_test_word_isa_builtin
+    #
+    #   - _unsefe_test_word_isa_keyword
+    #
+    # NOTE: Still not a general version. (see NOTE of `_unsefe_test_word_isa`)
+    if zlash_cap_builtin_lists_builtins; then
+        _unsefe_test_word_isa_builtin() {
+            case "$(builtin)" in
+                *"$1"*) return 0;
+            esac
+            return 1;
+        }
+    else
+        _unsefe_test_word_isa_builtin() {
+            _unsefe_test_word_isa "$1" builtin
+        }
+    fi
+    if zlash_cap_keyword_is_keyword; then
+        _unsefe_test_word_isa_keyword() {
+            _unsefe_test_word_isa "$1" keyword
+        }
+    elif zlash_cap_keyword_is_reserved; then
+        _unsefe_test_word_isa_keyword() {
+            _unsefe_test_word_isa "$1" reserved
+        }
+    else
+        _unsefe_test_word_isa_keyword() {
+            _unsefe_test_word_isa "$1" reserved
+        }
+    fi
+
+    zlash_cap_echo_builtin() {
+        ZLASH_CAPDSC='"echo" is a builtin'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa_builtin echo
+    } >/dev/null 2>&1
+
+    zlash_cap_printf_builtin() {
+        ZLASH_CAPDSC='"printf" is a builtin'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa_builtin printf
+    } >/dev/null 2>&1
+
+    zlash_cap_enable_builtin() {
+        ZLASH_CAPDSC='"enable" is a builtin'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa_builtin enable
+    } >/dev/null 2>&1
+
+    zlash_cap_builtin_builtin() {
+        ZLASH_CAPDSC='"builtin" is a builtin'
+        ZLASH_CAPREQS=""
+        _unsefe_test_word_isa_builtin builtin
+    } >/dev/null 2>&1
+
+    # Ksh-like way of builtin disabling
+    zlash_cap_rm_builtin_d() {
+        ZLASH_CAPDSC='"builtin -d echo" removes a builtin "echo"'
+        ZLASH_CAPREQS="echo_builtin"
+        (
+            PATH="" || return 1
+            eval 'OUT=$(echo OK)' || return 1
+            case "$OUT" in
+                OK) :;;
+                *) return 1;;
+            esac
+            eval 'builtin -d echo' || return 1
+            eval 'OUT="$(echo OK)" || OUT="FAILED"' || return 1
+            case "$OUT" in
+                FAILED) ! zlash_cap_echo_builtin && return 0;;
+            esac
+            return 1
+        )
+    } >/dev/null 2>&1
+
+    # Bash-like way of builtin disabling
+    zlash_cap_rm_builtin_enable_n() {
+        ZLASH_CAPDSC='"enable -n echo" removes a builtin "echo"'
+        ZLASH_CAPREQS="echo_builtin"
+        (
+            PATH="" || return 1
+            eval 'OUT=$(echo OK)' || return 1
+            case "$OUT" in
+                OK) :;;
+                *) return 1;;
+            esac
+            eval 'enable -n echo' || return 1
+            eval 'OUT="$(echo OK)" || OUT="FAILED"' || return 1
+            case "$OUT" in
+                FAILED) ! zlash_cap_echo_builtin && return 0;;
+            esac
+            return 1
+        )
+    } >/dev/null 2>&1
+
+    # Bash and Zsh do this, but not Ksh variants.
+    zlash_cap_builtin_calls_builtins() {
+        ZLASH_CAPDSC='"builtin echo" calls a builtin echo'
+        ZLASH_CAPREQS="echo_builtin printf_builtin builtin_builtin"
+        (
+            PATH="" || return 1
+            echo() { printf '%s\n' 'overriden'; }
+            eval 'OUT=$(builtin echo "notfunc")' || return 1
+            case "$OUT" in
+                'notfunc') return 0;;
+            esac
+            return 1
+        )
+    }
+
+    # Ksh variants do this, but not Bash nor Zsh.
+    zlash_cap_command_calls_builtins() {
+        ZLASH_CAPDSC='"command echo" calls a builtin echo'
+        ZLASH_CAPREQS="echo_builtin printf_builtin builtin_builtin"
+        (
+            PATH="" || return 1
+            echo() { printf '%s\n' "func"; }
+            eval 'OUT=$(command echo "notfunc")' || return 1
+            case "$OUT" in
+                'notfunc') return 0;;
+            esac
+            return 1
+        )
+    }
+
+    # `[` is an archaic command. `[[` has been "new" prectically forever, and
+    # recommended. Doesn't word-split unquoted left, and (without pattern
+    # characters) unquoted right.
+    zlash_cap_double_braket_str_eq() {
+        ZLASH_CAPDSC='[[ $VAL == "$STR" ]]'
+        ZLASH_CAPREQS=''
+        ( eval '_ZLASH_VAR="~/a b" || return 1
+                [ "$_ZLASH_VAR" = "~/a b"   ] && \
+                [[ $_ZLASH_VAR == "~/a b"  ]] &&  \
+                [[ $_ZLASH_VAR == $_ZLASH_VAR     ]] &&   \
+                [[ $_ZLASH_VAR != "~/a bc" ]]'
+        )
+    } >/dev/null 2>&1
+
+    # Pattern-matching double-brackets.
+    zlash_cap_double_braket_str_pat() {
+        ZLASH_CAPDSC='[[ $VAL == $PAT ]]'
+        ZLASH_CAPREQS=""
+        ( eval '
+            _ZLASH_VAR="~/a bbcdd e" || return 1
+            [    "$_ZLASH_VAR"   = "~/a bbcdd e"  ] &&\
+            [[    $_ZLASH_VAR    ==     *"c"*    ]] && \
+            [[    $_ZLASH_VAR    !=     *"f"*    ]] &&  \
+            [[  ":$_ZLASH_VAR"   ==  ":~"*c*     ]] &&   \
+            [[  ":$_ZLASH_VAR"   !=  ":f"*c*     ]] &&    \
+            [[  "${_ZLASH_VAR}:" ==      *c*"e:" ]] &&     \
+            [[  "${_ZLASH_VAR}:" !=      *c*"f:" ]] &&      \
+            [[ ":${_ZLASH_VAR}:" ==  ":~"*c*"e:" ]] &&       \
+            [[ ":${_ZLASH_VAR}:" !=  ":~"*f*"e:" ]]
+        ')
+    } >/dev/null 2>&1
+
+    zlash_cap_builtin_calls_builtin() {
+        ZLASH_CAPDSC='builtin calls a builtin'
+        ZLASH_CAPREQS=""
+        (
+            echo() { return 1; }
+            PASS='FAILED'
+            eval 'PASS="$(builtin echo OK)"' || return 1
+            case "$PASS" in
+                'OK') return 0;;
+            esac
+            return 1
+        )
+    } >/dev/null 2>&1
+
+    # `printf %q` shell-special character escaping, like `$` and space.
+    zlash_cap_printf_q() {
+        ZLASH_CAPDSC='printf %q\\n "$val"'
+        ZLASH_CAPREQS=''
+        # TODO: try to secure randomize, or at least just randomize the words!
+        (
+            IFS=' ' || return 1
+            _unsefe_test_word_isa_builtin printf && \
+                case "$(printf %q\\n '$one two')" in
+                    '\$one\ two') return 0;;
+                    *) return 1;;
+                esac
+        )
+    } >/dev/null 2>&1
+
+    if ! zlash_cap_printf_q; then
+        echo 'WARNING: CRITICAL INSECURITY: Shell does not provide the' \
+             'most portable sanitation mechanism' >/dev/stderr
+        case "${ZLASH_CRITICAL_INSECURITY:-exit}" in
+            'ignore')
+                readonly ZLASH_CRITICAL_INSECURITY  ||  \
+                    echo 'WARNING: CLIRICAL INSECURITY:' \
+                         'Failed to set readonly flag on' \
+                         'ZLASH_CRITICAL_INSECURITY' >/dev/stderr
+                ;;
+            *) exit 1;;
+        esac
+    fi
+
+    # `printf` to a variable.
+    zlash_cap_printf_to_var() {
+        ZLASH_CAPDSC='printf -v var %s "$val"'
+        ZLASH_CAPREQS=''
+        _unsefe_test_word_isa_builtin printf && \
+        (
+            _ZLASH_VAR="one" || return 1
+            eval 'printf -v _ZLASH_VAR %s "two"' || return 1
+            case "$_ZLASH_VAR" in
+                'two') return 0;;
+                *) return 1;;
+            esac
+        )
+    } >/dev/null 2>&1
+
+    # Plain nested expansion indirection.
+    zlash_cap_exp_indirect_naked() {
+        ZLASH_CAPDSC='"${$var}"'
+        ZLASH_CAPREQS=''
+        (
+            SECRET='password'
+            INDIRECTION='SECRET'
+            eval 'VAL="${$INDIRECTION}"' || return 1
+            case "$VAL" in
+                'password') return 0;;
+                *) return 1;;
+            esac
+        )
+    } >/dev/null 2>&1
+
+    # Explicit expansion indirection with bang (`!`)
+    zlash_cap_exp_indirect_bang() {
+        ZLASH_CAPDSC='"${!var}"'
+        ZLASH_CAPREQS=''
+        (
+            SECRET='password'
+            INDIRECTION='SECRET'
+            eval 'VAL="${!INDIRECTION}"' || return 1
+            case "$VAL" in
+                'password') return 0;;
+                *) return 1;;
+            esac
+        )
+    } >/dev/null 2>&1
+
+    # Explicit expansion indirection with `(P)`
+    zlash_cap_exp_indirect_P() {
+        ZLASH_CAPDSC='"${(P)var}"'
+        ZLASH_CAPREQS=''
+        (
+            SECRET='password'
+            INDIRECTION='SECRET'
+            eval 'VAL="${(P)INDIRECTION}"' || return 1
+            case "$VAL" in
+                'password') return 0;;
+                *) return 1;;
+            esac
+        )
+    } >/dev/null 2>&1
+
+    # Some shells distinguish between POSIX-defined builtins and other builtins
+    # and some shells do not allow function definitions with names of shadowing
+    # special builtins.
+    zlash_cap_return_override() {
+        _unsefe_test_word_isa_builtin return && \
+        ( eval 'return() { :; }' ) >/dev/null 2>&1
+    }
+
+    zlash_cap_alt_zlash_func_decl() {
+        ( eval 'function name { :; }' ) >/dev/null 2>&1
+    }
+
+    # Some shells will tolerate this type of declaration.
+    zlash_cap_mix_zlash_func_decl() {
+        ( eval 'function name() { :; }' ) >/dev/null 2>&1
+    }
+
+    # Invalid in strict POSIX compliance.
+    zlash_cap_zlash_func_name_with_dot() {
+        ( eval '.name() { :; }' ) >/dev/null 2>&1
+    }
+
+    # Invalid in strict POSIX compliance.
+    zlash_cap_zlash_func_name_with_colon() {
+        ( eval ':name() { :; }' ) >/dev/null 2>&1
+    }
+
+    # Invalid in strict POSIX compliance.
+    zlash_cap_zlash_func_name_with_at() {
+        ( eval '@name() { :; }' ) >/dev/null 2>&1
+    }
+
+    # Invalid in strict POSIX compliance.
+    zlash_cap_zlash_func_name_with_hash() {
+        ( eval 'name#5() { :; }' ) >/dev/null 2>&1
+    }
+
+    # Invalid in strict POSIX compliance.
+    # Supports Ksh93 namespacing.
+    zlash_cap_var_name_with_dot() {
+        ( eval '.name=' ) >/dev/null 2>&1
+    }
+
+    # Invalid in strict POSIX compliance.
+    # Is Ksh93-specific.
+    zlash_cap_special_ns_var_sh_version() {
+        ( eval '[ -n "${.sh.version}" ]' ) >/dev/null 2>&1
+    }
+
+    zlash_cap_arith_lit_oct() {
+        let '077+077==126' >/dev/null 2>&1 \
+            && ! let '08'  >/dev/null 2>&1
+    }
+
+    zlash_cap_arith_lit_hex() {
+        let '0xFF+0xff==510' >/dev/null 2>&1 \
+            && ! let '0xG'   >/dev/null 2>&1
+    }
+
+    zlash_cap_arith_lit_bin() {
+        let '0b11+0b11==6' >/dev/null 2>&1 \
+            && ! let '0b2' >/dev/null 2>&1
+    }
+
+    zlash_cap_arith_lit_nbase() {
+        let '3#22+3#22==16' >/dev/null 2>&1 \
+            && ! let '3#3'  >/dev/null 2>&1
+    }
+
+    # Arbitrary precision decimals (Ksh93 uses libmath)
+    zlash_cap_arith_arbp() {
+        let '0.1+0.2==0.3' >/dev/null 2>&1
+    }
+
+    # Boolean logic in arithmetic expressions is derived from C, where
+    # 0 is FALSE and non-0 is TRUE.  This is exactly opposite of shell
+    # logic compound commands, where 0 is OK and non-0 is a FAILURE.
+    _comp_test_cap_arith_bool_logic() {
+        let '0==0 && 1<0 || 1' \
+            && ! let '1 && 0'
+    } >/dev/null 2>&1
+
+    # Floating point math
+    zlash_cap_arith_float() {
+        let '0.1+0.2!=0.3 && 0.1+0.2<0.3001 && 0.1+0.2>0.2999' >/dev/null 2>&1
+    }
+
+    zlash_cap_arith_sqrt() {
+        ( eval let 'sqrt(9)==3' ) >/dev/null 2>&1
+    }
+
+    zlash_cap_compound_vars() {
+        ( eval 'v=( x="X" y="Y" ); [ "${v.y}" = "Y" ]' ) >/dev/null 2>&1
+    }
+
+    _compat_test_bash_witness() {
+        # BASH_VERSINFO is readonly
+        ! ( BASH_VERSINFO=(0) ) >/dev/null 2>&1 \
+            || return 1
+
+        # `shopt` is a builtin
+        [ "x$(builtin type -t builtin 2>/dev/null)" = "xbuiltin" ]      \
+            && [ "x$(builtin type -t shopt   2>/dev/null)" = "xbuiltin" ]\
+            || return 1
+    }
+
+    # https://git.savannah.gnu.org/cgit/bash.git/tree/NEWS
+    _test_bash_5_2_witness() {
+        (
+            # The new `globskipdots' shell option forces pathname expansion
+            # never to return `.' or `..' unless explicitly matched. It is
+            # enabled by default.
+            [[ -n "$(builtin shopt -p globskipdots 2>/dev/null)" ]] || return 1
+
+            # The `unset' builtin allows a subscript of `@' or `*' to unset a
+            # key with that value for associative arrays instead of unsetting
+            # the entire array (which you can still do with `unset arrayname').
+            # For indexed arrays, it removes all elements of the array without
+            # unsetting it (like `A=()').
+            declare -A assoc=([one]=1 ['@']=2 [three]=3 ['*']=4 [five]=5)
+            [[ ${assoc['@']} -eq 2 ]] || return 1
+            [[ ${#assoc[@]}  -eq 5 ]] || return 1
+            unset -v 'assoc[@]'
+            [[ ${#assoc[@]} -eq 4 ]] || return 1
+            unset -v 'assoc[*]'
+            [[ ${#assoc[@]} -eq 3 ]] || return 1
+
+            # There is a new parameter transformation operator: @k. This is like
+            # @K, but expands the result to separate words after word splitting.
+            eval 'declare -a list=("${assoc[@]@k}")' || return 1
+            [[ ${#list[@]} -eq 6 ]] || return 1
+        )
+    }
+
+    _test_bash_5_1_witness() {
+        # SRANDOM: a new variable that expands to a 32-bit random number that is
+        # not produced by an LCRNG, and uses getrandom/getentropy, falling back
+        # to /dev/urandom or arc4random if available. There is a fallback
+        # generator if none of these are available.
+        eval '[[ -v SRANDOM ]]' 2>/dev/null \
+            && [[ SRANDOM -ne SRANDOM ]]     \
+            || return 1
+
+        # Associative arrays may be assigned using a list of key-value pairs
+        # within a compound assignment. Compound assignments where the words are
+        # not of the form [key]=value are assumed to be key-value assignments. A
+        # missing or empty key is an error; a missing value is treated as NULL.
+        # Assignments may not mix the two forms.
+        (
+            declare -A assoc=(one 1 two 2)
+            eval '[[ -v assoc[two] ]]' 2>/dev/null \
+                && [[    assoc[two] -eq 2 ]]        \
+                && [[ ${#assoc[@]}  -eq 2 ]]         \
+                || return 1
+        )
+    }
+
+    # TODO more
+
+    _compat_test_zsh_witness() {
+        # ZSH_EVAL_CONTEXT and ZSH_SUBSHELL are readonly
+        ! ( ZSH_EVAL_CONTEXT="" && (( ZSH_SUBSHELL++ )) ) >/dev/null 2>&2 \
+            || return 1
+
+        # `setopt` is a builtin
+        [ "x$(builtin whence -w builtin 2>/dev/null)"     \
+            = "xbuiltin: builtin" ]                        \
+            && [ "x$(builtin whence -w setopt  2>/dev/null)"\
+                = "xsetopt: builtin" ]                       \
+            || return 1
+    }
+
+    _compat_test_ksh93_witness() {
+        # `return` is one of "special" builtins that cannot be overriden by
+        # functions.
+        ! ( eval 'function return { :; }' ) >/dev/null 2>&1 \
+            || return 1
+
+        # `.sh` is a builtin namespace.
+        ( eval '[[ -n "${.sh.version}" ]]' ) >/dev/null 2>&1 \
+            || return 1
+
+        # Advanced math
+        ( eval '[[ $((sqrt(9))) -eq 3 ]]' ) >/dev/null 2>&1 \
+            || return 1
+
+        # Compound variables
+        ( eval 'v=( x="X" y="Y" ); [ "${v.y}" = "Y" ]' ) 2>/dev/null \
+            || return 1
+    }
+
+    _compat_test_am_zsh() {
+        if ! _compat_test_bash_witness \
+        && ! _compat_test_ksh93_witness \
+        &&   _compat_test_zsh_witness
+        then
+            ZLASH_SH_TYP="zsh"
+            eval 'ZLASH_SH_VER=${(j:.:)${${(s:.:)ZSH_VERSION}[@]:0:2}}' \
                 || return 1
             _compat_test_am_zsh() { builtin return 0; }
             builtin return 0
@@ -397,35 +2056,30 @@ _compat_init() {
         fi
     }
 
-    # `shopt` is not a Zsh builtin.
-    # `BASH_VERSINFO` is a readonly variable in Bash.
-    # `.sh.version` is an invalid variable name in Bash.
     _compat_test_am_bash() {
-        # shellcheck disable=SC2030,SC2031
-        if [ "x$(builtin type -t builtin 2>/dev/null)" = "xbuiltin" ]\
-        && [ "x$(builtin type -t shopt   2>/dev/null)" = "xbuiltin" ] \
-        && ! ( eval '[ -n "${.sh.version}" ]' ) > /dev/null 2>&1       \
-        && ! (              BASH_VERSINFO=(0) ) > /dev/null 2>&1
+        if ! _compat_test_zsh_witness  \
+        && ! _compat_test_ksh93_witness \
+        &&   _compat_test_bash_witness
         then
-            ZLASH_SHELL_TYP="bash"
-            eval 'ZLASH_SHELL_VER=${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}'\
+            ZLASH_SH_TYP="bash"
+            ZLASH_SH_VER="${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}" \
                 || return 1
             # NOTE: These are not to be cleared during env scrubbing, if
             #       scrubbed subshell doesn't want to lose their "specialness",
             #       as per bash manpage.
-            ZLASH_PROTECTED_VARS="$( (
-            IFS=":"
-            typeset -a protected_vars
-            protected_vars=(
+            ZLASH_PROTECTED__ZLASH_VARS="$( (
+                IFS=":"
+                declare -a protected_vars
+                protected_vars=(
                     BASHPID       BASH_ALIASES  BASH_ARGV0      BASH_CMDS
                     BASH_COMMAND  BASH_SUBSHELL COMP_WORDBREAKS DIRSTACK
                     EPOCHREALTIME EPOCHSECONDS  FUNCNAME        GROUPS
                     LINENO        RANDOM        SECONDS         SRANDOM
                     BASH_COMPAT   BASH_XTRACEFD HOSTFILE        MAILCHECK
-            )
-            protected_vars+=("$ZLASH_PROTECTED_VARS")
-            echo "$protected_vars"
-        ) )" || return 1
+                )
+                protected_vars+=("$ZLASH_PROTECTED__ZLASH_VARS")
+                echo "$protected_vars"
+            ) )" || return 1
             _compat_test_am_bash() { builtin return 0; }
             builtin return 0
         else
@@ -437,26 +2091,14 @@ _compat_init() {
     # `shopt` and `setopt` are not Ksh builtins.
     # `.sh.version` is an illegal veriable name in Bash and Zsh.
     _compat_test_am_ksh93() {
-        if   [ "x$(whence -t whence 2>/dev/null)" = "xbuiltin" ]\
-        && ! [ "x$(whence -t shopt  2>/dev/null)" = "xbuiltin" ] \
-        && ! [ "x$(whence -t setopt 2>/dev/null)" = "xbuiltin" ]  \
-        &&   (           ZSH_EVAL_CONTEXT=""  ) > /dev/null 2>&1   \
-        &&   (              BASH_VERSINFO=(0) ) > /dev/null 2>&1    \
-        &&   ( eval '[ -n "${.sh.version}" ]' ) > /dev/null 2>&1
+        if ! _compat_test_bash_witness \
+        && ! _compat_test_zsh_witness   \
+        &&   _compat_test_ksh93_witness
         then
-            # Test for some ksh93 features
-            # TODO: check if `.sh.version` is already excluding older Ksh
-            if ( eval '[ "$((sqrt(9)))" = "3" ]'              ) 2>/dev/null \
-            && ( eval 'v=( x="X" y="Y" ); [ "${v.y}" = "Y" ]' ) 2>/dev/null
-            then
-                ZLASH_SHELL_TYP="ksh93"
-                ZLASH_SHELL_VER="0.0"
-                _compat_test_am_ksh93() { return 0; }
-                return 0
-            else
-                _compat_test_am_ksh93() { return 1; }
-                return 1
-            fi
+            ZLASH_SH_TYP="ksh93"
+            ZLASH_SH_VER="93.0"
+            _compat_test_am_ksh93() { return 0; }
+            return 0
         else
             _compat_test_am_ksh93() { return 1; }
             return 1
@@ -524,16 +2166,16 @@ _compat_init() {
     #       with more specialization using `Test_AmBash`, `Test_AmZsh`, etc...
     _compat_id_shell_type() {
         if   _compat_test_am_bash; then
-            if ! _compat_test_version_majorminor "$ZLASH_SHELL_VER" -ge 5.2
+            if ! _compat_test_version_majorminor "$ZLASH_SH_VER" -ge 5.2
             then
-                builtin echo "WARNING:" "$ZLASH_SHELL_TYP" \
-                        "$ZLASH_SHELL_VER" "is too low!" >/dev/stderr
+                builtin echo "WARNING:" "$ZLASH_SH_TYP" \
+                        "$ZLASH_SH_VER" "is too low!" >/dev/stderr
             fi
         elif _compat_test_am_zsh; then
-            if ! _compat_test_version_majorminor "$ZLASH_SHELL_VER" -ge 5.9
+            if ! _compat_test_version_majorminor "$ZLASH_SH_VER" -ge 5.9
             then
-                builtin echo "WARNING:" "$ZLASH_SHELL_TYP" \
-                        "$ZLASH_SHELL_VER" "is too low!" >/dev/stderr
+                builtin echo "WARNING:" "$ZLASH_SH_TYP" \
+                        "$ZLASH_SH_VER" "is too low!" >/dev/stderr
             fi
         elif _compat_test_am_ksh93; then
             echo "ERROR: ksh93 is not yet supported!" >/dev/stderr
@@ -548,7 +2190,7 @@ _compat_init() {
     _compat_id_shell_type || exit 1
 }
 
-_compat_init
+_zlsh_init
 # NOTE: POSIX compliance can be dropped from here, in favor of shell-specific
 #       extenstions.
 
@@ -563,11 +2205,11 @@ _compat_init
 #       limit outselves in function naming, but can still use aliases to get
 #       desired effect on all POSIX shells.
 alias Initialize-MinShellOpts=Initialize_MinShellOpts
+alias Zlash::Initialize-MinShellOpts=Zlash__Initialize_MinShellOpts
 Initialize_MinShellOpts() {
     Zlash::Initialize-MinShellOpts \
         && Initialize-MinShellOpts
 }
-alias Zlash::Initialize-MinShellOpts=Zlash__Initialize_MinShellOpts
 Zlash__Initialize_MinShellOpts() {
     # TODO: Check what versions support these options.
     _compat_test_am_bash && \
@@ -594,11 +2236,11 @@ Initialize-MinShellOpts
 # NOTE: Can use alias expansion non-interactively from here.
 
 alias Test-VersionMajorMinor=Test_VersionMajorMinor
+alias Zlash::Test-VersionMajorMinor=Zlash__Test_VersionMajorMinor
 Test_VersionMajorMinor() {
     Zlash::Test-VersionMajorMinor \
         && Test-VersionMajorMinor "$@"
 }
-alias Zlash::Test-VersionMajorMinor=Zlash__Test_VersionMajorMinor
 Zlash__Test_VersionMajorMinor() {
     # Default unspecialized Test_VersionMajorMinor
     Test_VersionMajorMinor() { _compat_test_version_majorminor "$@"; }
@@ -617,10 +2259,10 @@ alias Test-AmBash=Test_AmBash
 alias Test-AmZsh=Test_AmZsh
 alias Test-AmKsh=Test_AmKsh
 Test_AmBash() {
-    _compat_test_am_bash && Test-VersionMajorMinor "$ZLASH_SHELL_VER" "$@"
+    _compat_test_am_bash && Test-VersionMajorMinor "$ZLASH_SH_VER" "$@"
 }
 Test_AmZsh() {
-    _compat_test_am_zsh && Test-VersionMajorMinor "$ZLASH_SHELL_VER" "$@"
+    _compat_test_am_zsh && Test-VersionMajorMinor "$ZLASH_SH_VER" "$@"
 }
 Test_AmKsh() { _compat_test_am_ksh93; }
 
@@ -635,11 +2277,11 @@ Test_AmKsh() { _compat_test_am_ksh93; }
 
 # Avoiding `echo` pitfalls. See: https://www.etalabs.net/sh_tricks.html
 alias Write-Out=Write_Out
+alias Zlash::Write-Out=Zlash__Write_Out
 Write_Out() {
     Zlash::Write-Out \
         && Write-Out
 }
-alias Zlash::Write-Out=Zlash__Write_Out
 Zlash__Write_Out() {
     # Default fallback
     Write_Out() { echo -- "$*"; }
@@ -666,6 +2308,12 @@ alias Invoke-OnlyOut=Invoke_OnlyOut
 alias Invoke-NoFail=Invoke_NoFail
 Invoke_Silent()  { "$@" 2>/dev/null 1>/dev/null; }
 Invoke_OnlyOut() { "$@" 2>/dev/null; }
+
+# `builtin` works differently in Ksh.  Additionally,
+# Ksh has "special" builtins, which have higher precedence than
+# functions, and cannot be overriden by aliases.
+
+
 Invoke_NoFail()  { "$@" || builtin return 0; }  # TODO: spec ksh
 
 # Making `$funcstack` work in Bash as in Zsh.
@@ -755,17 +2403,26 @@ Test-AmKsh && {
 #         - `Test-IsAssocName`
 #         - `Test-IsAssocOrIxArrName`
 Test-AmBash && \
-    _Test_IsArrName() { [[ "$(builtin declare -p "$1")" == 'declare -a'* ]]; }
+    _Test_IsArrName() {
+        [[ "$(Invoke-Silent builtin declare -p "$1")" == 'declare -a'* ]]
+    }
 Test-AmZsh && \
-    _Test_IsArrName() { [[ "$(builtin typeset -p "$1")" == 'typeset -a'* ]]; }
+    _Test_IsArrName() {
+        [[ "$(Invoke-Silent builtin typeset -p "$1")" == 'typeset -a'* ]]
+    }
 Test-AmKsh && \
-    _Test_IsArrName() { [[ "$(typeset -p "$1")" == 'typeset -a'* ]]; }
+    _Test_IsArrName() {
+        [[ "$(Invoke-Silent typeset -p "$1")" == 'typeset -a'* ]]
+    }
 
 # Basic exception bootstrapping definitions,
 # redefined/inlined after required definitions are complete.
 
 # Errors Stack
-_Test_IsArrName ZLASH_ERRORS || typeset -a ZLASH_ERRORS=()
+_Test_IsArrName ZLASH_ERRORS || {
+    New-GlobalIxArr ZLASH_ERRORS
+    ZLASH_ERRORS=()
+}
 
 alias Push-Error=Push_Error
 Push_Error() {
@@ -836,1305 +2493,4 @@ Test-AmBash && {
     Test_IsExeName() {
         [[ "$(Invoke-OnlyOut builtin type -ta "$1")" == *file* ]]
     }
-}
-
-# TODO: implement
-Test-IsWindows() { Error::NotImplemented; }
-
-# NOTE: Default implementations should have meaningful errors.
-Test-ExesExist() { Error::NotImplemented; }
-# NOTE: This relies on BASH_CMDS to not lose its specialness.
-#       (not manually unset)
-Test_AmBash -ge 5.0 && \
-    Test-ExesExist() {
-        local -i status=0
-        local cmd
-        for cmd in "$@"; do
-            # If fullpath and executable file, we're done.
-            Test-IsFullPath          "$cmd" \
-                && Test-IsFile       "$cmd"  \
-                && Test-IsExecutable "$cmd"   \
-                && continue ||:
-            # Did we already find it?
-            Test-IsAssocKey BASH_CMDS "$cmd" && continue ||:
-            # Let's force PATH search, even if $cmd is shadowed by
-            # alias, function, builtin, or keyword; if that fails,
-            # try with a Bash-default PATH.
-            local onpath
-            if onpath="$(Invoke-OnlyOut builtin  type   -P  "$cmd")" \
-            || onpath="$(Invoke-OnlyOut builtin command -pv "$cmd")"; then
-                Invoke-Assert builtin hash -p "$onpath" "$cmd"
-            else
-                Fail "Required command not available:" "$cmd" \
-                    || status=$?
-            fi
-        done
-        builtin return $status
-    }
-
-Get-ExeFullPath() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    Get-ExeFullPath() {
-        local cmd="$1"
-        local -n out="${2:-REPLY}"
-        if Invoke-Silent Test-ExesExist "$cmd"; then
-            if Test-IsFullPath "$cmd"; then
-                out="$cmd"
-            else
-                assert Test-IsAssocKey BASH_CMDS "$cmd"
-                out="${BASH_CMDS[$cmd]}"
-            fi
-        else
-            Fail "WARINING: Executable not available:" "$cmd"
-        fi
-    }
-
-# TODO: wrap this with handling object types later.
-Get-NamesByType() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    Get-NamesByType() {
-        local action="$1"
-        local prefix="${2:-}"
-        local filterpat="${3:-}"
-        local -n out="${4:-REPLY}"
-        local -A compgen_args=(["-A"]="$action" ["-o"]="nosort")
-        [[ -n "$filterpat" ]] && compgen_args["-X"]="$filterpat"
-        local IFS=$'\n'
-        out=()
-        < <(builtin compgen "${compgen_args[@]@k}" -- "$prefix") \
-          builtin read -d '' -a out
-    }
-
-Get-AliasNames() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    Get-AliasNames() { Get-NamesByType "alias" "$@"; }
-
-Get-FunctionNames() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    Get-FunctionNames() { Get-NamesByType "function" "$@"; }
-
-Get-BuiltinNames() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    Get-BuiltinNames() { Get-NamesByType "builtin" "$@"; }
-
-Get-KeywordNames() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    Get-KeywordNames() { Get-NamesByType "keyword" "$@"; }
-
-Get-VariableNames() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    Get-VariableNames() { Get-NamesByType "variable" "$@"; }
-
-Get-ShellOptionNames() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && {
-    Get-ShellOptionNames() {
-        local prefix="${1:-}"
-        local filterpat="${2:-}"
-        local -n out="${3:-REPLY}"
-        local -A names=()
-        local -a set_OPt_names shopt_names
-        Get-BashSetOptNames "$prefix" "$filterpat" set_OPt_names
-        Get-BashShoptNames  "$prefix" "$filterpat"   shopt_names
-        local name
-        for name in "${set_OPt_names[@]}" "${shopt_names[@]}"; do
-            names["$name"]=""; done
-        out=("${!names[@]}")
-    }
-    # The following two are Bash-specific, due to historical mess of `set -o`
-    # and `shopt`.
-    Get-BashSetOptNames() { Get-NamesByType "setopt" "$@"; }
-    Get-BashShoptNames()  { Get-NamesByType  "shopt" "$@"; }
-}
-
-Test-AmMacOS() {
-    if [[ "$OSTYPE" == "darwin"* ]]        \
-    && Invoke-Silent Test-ExesExist "uname" \
-    && [[ "$(builtin command uname -s)" == "Darwin" ]]
-    then
-        Test-AmMacOS() { builtin return 0; }
-        builtin return 0
-    else
-        Test-AmMacOS() { builtin return 1; }
-        builtin return 1
-    fi
-}
-
-Test_AmBash && Test-AmSubshell() { [[ $((BASH_SUBSHELL)) -gt 0 ]] }
-Test_AmZsh  && Test-AmSubshell() { [[ $(( ZSH_SUBSHELL)) -gt 0 ]] }
-
-# Used by `Set-Reply` to determine if reply should be shown on stdout or not.
-Test-AmShowing() {
-    builtin local -i skip="${1:-0}"
-    Test-IsTerminal 1 \
-        && [[ ${#funcstack[@]} -le $((${_ZLASH_SKIP_FRAMES:-0} + skip + 2)) ]]
-}
-
-Test-AmUserControlled() { Test-IsTerminal 0      ; }
-Test-AmPiping()         { Test-IsPipe /dev/stdout; }
-Test-AmPiped()          { Test-IsPipe /dev/stdin ; }
-
-# Pipeline situation under normal conditions:
-#           $  a  |  b  |  c
-#     stdin : tty   pipe  pipe        a: Piping  && UserControlled
-#    stdout : pipe  pipe  tty         b: Piping  && Piped
-#    stderr : tty   tty   tty         c: Showing && Piped
-
-Write-IndentOut() {
-    local -i indent
-    if [[ $# -gt 0 ]]; then
-        indent="$1"
-        shift
-    else
-        indent="${ZLASH_INDENT:-4}"
-    fi
-    local line
-    if [[ $# -gt 0 ]]; then
-        local text="$*"
-        # local old_ifs="$IFS" IFS=$'\n'
-        # local -a lines=($text)
-        local -a lines=()
-        mapfile -t lines <<<"$text"
-        # IFS="$old_ifs"
-        for line in "${lines[@]}"; do
-            builtin printf "%${indent}s%s\n" "" "$line"
-        done
-    elif Test-AmPiped; then
-        while IFS= read -r line; do
-            builtin printf "%${indent}s%s\n" "" "$line"
-        done
-    fi
-}
-
-# Same as `Write-IndentOut`, except 1st line is not indented.
-Write-IndentEx1stOut() {
-    local -i indent
-    if [[ $# -gt 0 ]]; then
-        indent="$1"
-        shift
-    else
-        indent="${ZLASH_INDENT:-4}"
-    fi
-    local first=true
-    local line
-    if [[ $# -gt 0 ]]; then
-        local text="$*"
-        local old_ifs="$IFS" IFS=$'\n'
-        local -a lines=($text)
-        IFS="$old_ifs"
-        for line in "${lines[@]}"; do
-            if $first; then
-                builtin printf "%s\n" "$line"
-                first=false
-            else
-                builtin printf "%${indent}s%s\n" "" "$line"
-            fi
-        done
-    elif Test-AmPiped; then
-        while IFS= read -r line; do
-            if $first; then
-                builtin printf "%s\n" "$line"
-                first=false
-            else
-                builtin printf "%${indent}s%s\n" "" "$line"
-            fi
-        done
-    fi
-}
-
-# Write to stdout values of arguments, and for each, if it is an object,
-# introspect it, and if it is a word for existing name of an alias, keyword,
-# function, builtin, command, global, and local variable. If called with a
-# single argument, shows function implementation, all executables, and variabel
-# contents.
-# TODO: split variable output by global/local.
-# TODO: wrap this with object introspection
-alias show="Show-Args"
-Show-Args() { Error::NotImplemented; }
-# Syntax highlighter helpers, overriden if `bat` is available.
-# Used for argument lines.
-Show-Args::Invoke-Out() { "$@"; }
-# Used for brief descriptions per argument.
-Show-Args::Invoke-IndentOut() { "$@" | Write-IndentOut; }
-# Used for source, if `Show-Args` has a single argument.
-Show-Args::Invoke-IndentSrcOut() { "$@" | Write-IndentOut; }
-Test_AmBash && \
-    Show-Args() {
-        local -i i=0
-        local arg
-        for arg in "$@"; do
-            Show-Args::Invoke-Out Write-Out "\$$((++i))=${arg@Q}"
-            Test-IsFuncName "$arg" && {
-                if [[ $# -eq 1 ]]; then
-                    (
-                        # Output posix function name style for compat.
-                        set -o posix
-                        Show-Args::Invoke-IndentSrcOut \
-                            Invoke-Assert builtin declare -f "$arg"
-                    )
-                else
-                    Show-Args::Invoke-IndentOut Write-Out "${arg}() {...}"
-                fi
-            }   ||:
-            Test-IsVarName "$arg" && {
-                if [[ $# -eq 1 ]]; then
-                    Show-Args::Invoke-IndentSrcOut \
-                        Invoke-Assert builtin declare -p "$arg"
-                else
-                    local decl
-                    decl="$(Invoke-Assert builtin declare -p "$arg")"
-                    Show-Args::Invoke-IndentOut Write-Out "${decl%%=*}=..."
-                fi
-            }   ||:
-            Test-IsKeywordName "$arg"                              \
-                && Show-Args::Invoke-IndentOut Write-Out "# keyword"\
-                ||:
-            Test-IsBuiltinName "$arg"                              \
-                && Show-Args::Invoke-IndentOut Write-Out "# builtin"\
-                ||:
-            Test-IsExeName "$arg"                                  \
-                && Invoke-Assert Get-ExeFullPath "$arg"             \
-                && Show-Args::Invoke-IndentOut Write-Out "# ${REPLY}"\
-                ||:
-            Test-IsAliasName "$arg" && {
-                Show-Args::Invoke-IndentOut \
-                    Write-Out "$(Invoke-Assert builtin alias "$arg")"
-            }   ||:
-        done
-    }
-
-# Object cell assoc.
-declare -gA _ZLASH_CELL=()
-
-# Confirm-IsObj "$var"
-Test-IsObject() { [[ -v '_ZLASH_CELL[$1]' ]]; }
-
-#------------------------------------------------------------------------------
-### 5.    LOWER-LEVEL FUNCTION HANDLING
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
-#
-
-# ScriptBlock Source Cache
-declare -gA _ZLASH_SCRIPTBLOCK=()
-
-# Cache and get a reference to function's body source.
-Get-ScriptBlockSrcRef() { Error::NotImplemented; }
-Test_AmBash && \
-    Get-ScriptBlockSrcRef() {
-        local func_name="$1"
-        local -n out_ref="${2:-REPLY}"
-        if Test-IsAssocKey _ZLASH_SCRIPTBLOCK "$func_name"; then
-            out_ref="_ZLASH_SCRIPTBLOCK[$func_name]"
-        else
-            local func_src
-            if func_src="$(Invoke-OnlyOut builtin declare -f "$func_name")"
-            then
-                # shellcheck disable=SC2034
-                _ZLASH_SCRIPTBLOCK["$func_name"]="{${func_src#*\{}" \
-                    && out_ref="_ZLASH_SCRIPTBLOCK[$func_name]"
-            else
-                Fail "Error: Can't get ScriptBlock of ${func_name}"
-            fi
-        fi
-    }
-
-# Used in mechanisms like object instantiation and class inheritance.
-Copy-Function() { Error::NotImplemented; }
-Test_AmBash && \
-    Copy-Function() {
-        local func_name="$1" target_name="$2" ScriptBlockSrcRef
-        Get-ScriptBlockSrcRef "$func_name" ScriptBlockSrcRef \
-            && local -n ScriptBlockSrcRef                     \
-            && eval "${target_name}() $ScriptBlockSrcRef"      \
-            && _ZLASH_SCRIPTBLOCK["$target_name"]="$ScriptBlockSrcRef"
-    }
-
-Remove-Function() { Error::NotImplemented; }
-Test_AmBash && \
-    Remove-Function() {
-        local func_name="$1"
-        # https://www.shellcheck.net/wiki/SC2184
-        if Test-IsFuncName "$func_name"; then
-            builtin unset -f "$func_name" \
-                && builtin unset '_ZLASH_SCRIPTBLOCK[$func_name]'
-        else
-            Fail "Error: Can't remove non-existent function: ${func_name}!"
-        fi
-    }
-Test_AmZsh && \
-    Remove-Function() {
-        local func_name="$1"
-        # https://www.shellcheck.net/wiki/SC2184
-        if Test-IsFuncName "$func_name"; then
-            builtin unfunction "$func_name" \
-                && builtin unset '_ZLASH_SCRIPTBLOCK[$func_name]'
-        else
-            Fail "Error: Can't remove non-existent function: ${func_name}!"
-        fi
-    }
-
-Move-Function() {
-    local func_name="$1" target_name="$2"
-    Copy-Function "$func_name" "$target_name" \
-        && Remove-Function "$func_name"
-}
-
-# This is used to inline functions that need to operate in
-# scope of their caller.  These functions cannot receive any arguments.
-# NOTE: If function is not supplied, the function name used is
-#       alias name appended with "::__func__" suffix.
-New-AliasScriptBlock() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    New-AliasScriptBlock() {
-        local alias_name="$1" func_name="${2:-}" ScriptBlockSrcRef
-        [[ -z "$func_name" ]] && func_name="${alias_name}::__func__"
-        # shellcheck disable=SC2139
-        if Get-ScriptBlockSrcRef "$func_name" ScriptBlockSrcRef \
-        && local -n ScriptBlockSrcRef
-        then
-            # NOTE: This must remain separate from logical pipeline above, or
-            #       the `ScriptBlockSrcRef` will be expanded before it's
-            #       assigned and set as a name reference.
-            alias "$func_name"="$ScriptBlockSrcRef"
-        else
-            Error::NotExpected
-        fi
-    }
-
-#------------------------------------------------------------------------------
-### 6.    HOOKING MECHANISM
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
-
-
-
-#------------------------------------------------------------------------------
-### 6.    ONRETURN AND ONERROR INLINE HOOKS
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
-
-# Invoked each callback in the provided indexed array with optional arguments.
-#
-#     Invoke-CallbacksIxArr CALLBACKS_ARR [arg1 ...]
-#
-# TODO: Decide if more control should be provided via CB return values.
-Invoke-CallbacksIxArr() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    Invoke-CallbacksIxArr() {
-        local -n arr="$1"
-        local cmd
-        for cmd in "${arr[@]}"; do
-            "$cmd" "$@"
-        done ||:
-    }
-
-# Intended to be inline.
-Use-OnReturn() {
-    # Idempotent
-    if ! [[ "${_ZLASH_ONRET_FRAME:-0}" -eq "${#funcstack[@]}" ]]; then
-        local        -i _ZLASH_ONRET_FRAME="${#funcstack[@]}" \
-            && local -a _ZLASH_ONRET_CBS=()                    \
-            && trap 'Invoke-CallbacksIxArr _ZLASH_ONRET_CBS' RETURN
-    fi ||:
-}
-
-Add-OnReturnCB() {
-    [[ $((${_ZLASH_ONRET_FRAME:-0} + 1)) -eq "${#funcstack[@]}" ]] \
-        && _ZLASH_ONRET_CBS+=("$@")                                 \
-        || Error "${funcstack[0]}"                                   \
-                "must be used after Use-OnReturn in the same scope!"
-}
-
-# Intended to be inline.
-Use-OnError() {
-    local -a _ZLASH_ONERR_CBS=() \
-        && trap 'Invoke-CallbacksIxArr _ZLASH_ONERR_CBS' ERR
-}
-
-Add-OnErrorCB() {
-    [[ $((${_ZLASH_ONERR_FRAME:-0} + 1)) -eq "${#funcstack[@]}" ]] \
-        && _ZLASH_ONERR_CBS+=("$@")                                 \
-            || Error "${funcstack[0]}"                                   \
-                     "must be used after Use-OnError in the same scope!"
-}
-
-#------------------------------------------------------------------------------
-### 6.    FUNCTION INLINING AND WRAPPING FUNCTIONALITY
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
-# NOTE: Inlining is not intended to be for performance gain, but to provide
-#       reusability of a command group to be executed in a coller's context,
-#       while also retaining syntax and static analysis checking ability.
-
-# Defensive bootstrapping inlining definitions.
-_ZLASH::Bootstrap-Inlines() {
-    local name reeval=false
-    for name in "$@"; do
-        # If it's already bootstrap-inlined, continue.
-        if Test-IsFuncName "${name}::__func__"; then
-            Test-IsAliasName "$name" \
-                && continue           \
-                || { Error::NotExpected ||:; return 1; }
-        fi
-        Move-Function               "$name" "${name}::__func__" \
-            && New-AliasScriptBlock "$name" "${name}::__func__"  \
-            || { Error::NotExpected ||:; return 1; }
-        reeval=true
-    done
-    # Re-evaluate defined functions, if new aliases.
-    if "$reeval"; then
-        eval declare -f || { Error::NotExpected ||:; return 1; }
-    fi ||:
-}
-
-Error::NotExpected() { Error::NotImplemented; }
-Test_AmBash && \
-    Error::NotExpected() {
-        Error "Unexpected state from call:" "${funcstack[0]}" "${@@Q}"
-        return $?
-    }
-
-Use-LocalNoGlob() { Error::NotImplemented; }
-Test_AmBash && \
-    Use-LocalNoGlob() {
-        trap "eval $(Invoke-NoFail builtin shopt -po noglob)" RETURN
-        Invoke-Assert builtin set -o noglob
-    }
-
-# TODO: need to add any others here?
-_ZLASH::Bootstrap-Inlines \
-    Error::NotImplemented  \
-    Error::NotExpected      \
-    Use-LocalNoGlob
-
-# Unique name generating counters.
-#
-# NOTE: Idempotance for re-sourcing this. We don't want to lose live
-# identifiers.
-Test-IsAssocName   _ZLASH_IGEN \
-    || declare -gA _ZLASH_IGEN=()
-Test-IsAssocKey    _ZLASH_IGEN "${_ZLASH_IGEN_PREFIX:-_id}" \
-    ||             _ZLASH_IGEN["${_ZLASH_IGEN_PREFIX:-_id}"]=0
-
-New-Identifier() {
-    :
-}
-# Generated names match a regex pattern:
-#
-#     /(?name:[^#[:space:]]+)#(?igen:[[:digit:]]+)/
-#
-# Acceptable basis names must match the `name` portion of the above regex.
-New-NameFrom() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    New-NameFrom() {
-        local name="${1%#*}"
-        local -n out="${2:-REPLY}"
-        [[ "$name" == +([^#[:space:]$])'#'+([[:digit:]]) ]]
-    }
-
-# Mapping of inlined function names as aliases to new names.
-declare -gA _ZLASH_INLINES=()
-
-# Mapping of original function names to integral counter of wraps, used to
-# create unique function names for wrapping or inlining.
-declare -gA _ZLASH_ORIG=()
-
-Test-IsNoArgsFunction() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    Test-IsNoArgsFunction() {
-        local func_name="$1" ScriptBlockSrcRef
-        if Get-ScriptBlockSrcRef "$func_name" ScriptBlockSrcRef \
-        && local -n ScriptBlockSrcRef
-        then
-            [[ "$ScriptBlockSrcRef" != *'$'[1-9#@]* ]] && \
-            [[ "$ScriptBlockSrcRef" != *'${'[1-9@]* ]]
-        else
-            Error::NotExpected
-        fi
-    }
-
-Test-IsFunctionInline() { Error::NotImplemented; }
-# NOTE: This relies on `BASH_ALIASES` specialness.
-Test_AmBash && \
-    Test-IsFunctionInline() {
-        local func_name="$1"
-        Test-IsAliasName "$func_name"                            \
-            && Test-IsFuncName   "${BASH_ALIASES[$func_name]}"\
-            && Test-IsNoArgsFunction "${BASH_ALIASES[$func_name]}" \
-            && Test-Assert Test-IsAssocKey _ZLASH_INLINES "$func_name"
-        # Asserting to make a non-duck illegal, if it quacks.
-    }
-
-Set-FunctionInline() {
-    local func_name="$1"
-    Test-IsFunctionInline "$func_name" && return 1 ||:
-    Test-IsNoArgsFunction "$func_name"                                    \
-        || Error "Cannot inline function that uses arguments:" "$func_name"\
-        || return 1
-    Test-IsAssocKey _ZLASH_IGEN "$func_name" \
-        || _ZLASH_IGEN["$func_name"]=0
-    if local new_name="${func_name}#$((++_ZLASH_IGEN["$func_name"]))"; then
-        Move-Function "$func_name" "$new_name"
-        alias "$func_name"="$new_name"
-    else
-        Error::NotExpected
-    fi
-}
-
-
-#------------------------------------------------------------------------------
-# A brief detour for some convenience wrappers.
-#
-# TODO: Move this much lower and make more robust?
-
-Get-ToolFullPath() { Error::NotImplemented; }
-Test_AmBash -ge 5.0 && \
-    Get-ToolFullPath() {
-        local tool="$1" name
-        local -n out="$2"
-        local -a possibilities
-        read -d ":" -a possibilities <<<"$tool"
-        for name in "${possibilities[@]}"; do
-            Invoke-Silent Get-ExeFullPath "$name" out && Pass ||:
-        done
-        Fail ""
-    }
-
-Test-ExesExist "${ZLASH_TOOL_BAT:-bat}" && {
-    Get-ExeFullPath "${ZLASH_TOOL_BAT:-bat}" ZLASH_TOOL_BAT
-    Show-Args::Invoke-Out() {
-        "$@"\
-            | "$ZLASH_TOOL_BAT"         \
-                    --language    bash  \
-                    --italic-text always \
-                    --paging      never   \
-                    --style       plain    \
-                    --color       auto      \
-                    --theme       "$ZLASH_TOOL_BAT_THEME"
-    }
-    Show-Args::Invoke-IndentOut() {
-        Test-AmShowing 1           \
-            && local color="always" \
-            || local color="auto"
-        "$@"\
-            | "$ZLASH_TOOL_BAT"                            \
-                    --language       bash                  \
-                    --italic-text    always                 \
-                    --paging         never                   \
-                    --style          plain                    \
-                    --color          "$color"                  \
-                    --theme          "$ZLASH_TOOL_BAT_THEME"         \
-                    --wrap           character                   \
-                    --terminal-width "$((COLUMNS - ZLASH_INDENT))"\
-            | Write-IndentOut "$((ZLASH_INDENT))"
-    }
-    Show-Args::Invoke-IndentSrcOut() {
-        Test-AmShowing 1           \
-            && local color="always" \
-            || local color="auto"
-        "$@"\
-            | "$ZLASH_TOOL_BAT"                            \
-                    --language       bash                  \
-                    --italic-text    always                 \
-                    --paging         never                   \
-                    --style          numbers                  \
-                    --color          "$color"                  \
-                    --theme          "$ZLASH_TOOL_BAT_THEME"         \
-                    --wrap           character                   \
-                    --terminal-width "$((COLUMNS - ZLASH_INDENT))"\
-            | Write-IndentOut "$((ZLASH_INDENT))"
-    }
-}
-
-#------------------------------------------------------------------------------
-### 6.    FUNDAMENTAL OBJECTS
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
-
-
-Ref::Get() {
-    :
-}
-
-: ${_ZLASH_IGEN[Ref]:=0}
-
-Ref::New() {
-    local -n bind="$1"
-    local val="$2" cls self
-    cls="${funcstack[0]%::*}"
-    self="${cls}#$((++_ZLASH_IGEN["$cls"]))"
-    _ZLASH_CELL["$self"]="$val"
-    bind="$self"
-}
-
-#------------------------------------------------------------------------------
-### 6.    ADVANCED FUNCTION RESULT HANDLING
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
-
-# TODO: Revisit and reevaluate.
-#       Currently, only:
-#         - linearity of 1 is supported for mutable results;
-#         - dereferencing levels of 0 and 1 are supported.
-#
-#   - REPLY_TYPE :: either a naked type (bash:${var@a}, zsh:${(t)var}),
-#                   or any Proto.* object.
-#   - REPLY_DREF :: integer level of dereferencing needed from the cell.
-#   - REPLY_LINR :: linearity of cell (number of allowed consumptions).
-#                   negative integers for immutable results.
-: ${REPLY:=}
-: ${REPLY_TYPE:=}
-: ${REPLY_DREF:=0}
-: ${REPLY_LINR:=0}
-
-# TODO: Define how file and socket should behave here, if differently.
-# TODO: Introspect/interrogate objects how they want to be streamed.
-# NOTE: This does not consume REPLY.  If REPLY value is of a linear type,
-#       and consumption needs to be tracked in a subshell, additional
-#       safety precautions are needed.
-Test_AmBash && \
-    Write-ReplyReprOut() {
-        local reply="$REPLY"
-        local -i dref
-        for (( dref=REPLY_DREF ; dref>0 ; dref-- )); do
-            local -n reply="$reply"; done
-        if Test-IsObject "$reply"; then
-            : # TODO
-        elif Test-IsAssocOrIxArrName reply; then
-            Write-Out "${reply[@]@Q}"
-        else
-            Write-Out "${reply@Q}"
-        fi
-    }
-Test_AmZsh && \
-    Write-ReplyReprOut() {
-        local reply="$REPLY"
-        local -i dref
-        for ((dref=REPLY_DREF; dref>0; dref--)); do
-            # shellcheck disable=SC2296
-            reply="${(P)reply}"; done
-        # shellcheck disable=SC2296
-        Write-Out "${(Pqq)reply}"  # nocomment (syntax highlighter bug)
-    }
-
-# TODO: Introspect/interrogate if object can show itself.
-Show-Reply() {
-    Write-ReplyReprOut
-}
-
-Test_AmBash && Set-Reply() {
-        __RESULT=("$1" "${1@a}" 0 -1)
-        Test-AmShowing && Show-Result
-        Test-AmPiping  && Write-ResultRepr
-    }
-Test_AmZsh && Set-Reply() {
-        # shellcheck disable=SC2296
-        __RESULT=("$1" "${(t)1}" 1 -1)
-        Test-AmShowing && Show-Result
-        Test-AmPiping  && Write-ResultRepr
-    }
-
-Test_AmBash && Set-ReplyRef() {
-        __RESULT=("$1" "${1@a}" 1 1)
-        Test-AmShowing && Show-Result
-        Test-AmPiping  && Write-ResultRepr
-    }
-Test_AmZsh && Set-ReplyRef() {
-        # shellcheck disable=SC2296
-        __RESULT=("$1" "${(t)1}" 1 1)
-        Test-AmShowing && Show-Result
-        Test-AmPiping  && Write-ResultRepr
-    }
-
-Test_AmBash && \
-    Get-Result() {
-        if [[ $((REPLY_LINR)) -eq 0 ]]; then
-            Write-Err "ERROR: Result is stale in:" "${FUNCNAME[@]}"
-            return 1
-        else
-            local -n name="${1:-REPLY}"
-            name="$RESULT_CELL" && : $((RESULT_LINR--))
-        fi
-    }
-
-#------------------------------------------------------------------------------
-### 5.    E r r o r s   a n d   A s s e r t i o n s
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
-#
-
-declare -gi _ZLASH_ERR_STACK_SKIP=0
-
-Error__SkipScope__scriptblock() {
-    local -I _ZLASH_ERR_STACK_SKIP
-}
-New-AliasScriptBlock Error__SkipScope
-
-# Error() {
-#     local -i status="$1"
-#     Write-Err "${funcstack[0]}" "${@:2}" "in" \
-#               "(" "${funcstack[@]:_ZLASH_ERR_STACK_SKIP+1}" ")";
-#     exit $status
-# }
-
-Copy-Function Error Assertion__Error
-
-Assert-Eval() {
-    local -i status
-    eval "$@"
-    status=$?
-    [[ status -eq 0 ]] || Assertion::Error $status "$@"
-}
-
-Test_AmBash && Assert-StrEq() {
-        Error::SkipScope
-        [[ "$1" == "$2" ]] \
-            || Assertion::Error 1 "Expected" "${1@Q}" "==" "${2@Q}" "${@:3}"
-    }
-
-Test_AmBash && New-DeclDef() {
-        local name="$1" begin="$2" end="$4"
-        Assert-StrEq "$3" "..." "Syntax Error:" "${funcstack[0]}" "${@@Q}"
-    }
-
-#------------------------------------------------------------------------------
-### 6.    B u i l t i n   P r o t o t y p e s
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
-#
-
-# Current namespace.
-declare -g __NS=""
-
-Test_AmBash && Confirm-AmInClassDef() {
-    amSubshell                                \
-        && [[ -v 'IN_CLASS_DEF' ]]             \
-        && [[  "${IN_CLASS_DEF@a}" == 'r'    ]] \
-        && [[  "${IN_CLASS_DEF}"   == 'true' ]]
-}
-
-class::start__scriptblock() {
-    # Confirm we are in a class definition subshell before proceeding.
-    if ! Confirm-AmInClassDef; then
-        Write-Err "ERROR: Illegal internal call in:" "${funcstack[@]}"
-        exit 1
-    fi
-
-    # class name [: base1 base2 ...]
-    declare -g   name="$1"
-    declare -ga bases=("${$@:3}")
-    if [[ "$#" -gt 1 ]] && ! [[ "$2" == ':' ]]; then
-        Write-Err "Error: Illegal class syntax: class" "$@"
-        exit 1
-    fi
-
-    # Remove all functions (ignore readonly errors)
-    # except namespaces of bases.
-    Get-FunctionNames "" ""
-    for func in "${REPLY[@]}"; do
-        builtin unset -f "$func" &>/dev/null; done
-
-    __NS="${__NS}${name}::"
-}
-New-AliasScriptBlock class::start
-
-class::end__scriptblock() {
-    declare -p name bases
-    declare -f
-}
-New-AliasScriptBlock class::end
-
-alias class='
-class::_() {
-    . <( (
-        declare -gr IN_CLASS_REF="true"
-        class::start '
-Test_AmBash && alias ssalc='
-        class::end
-    ) )
-}; class::_; unset -f class::_; '
-
-_ZLASH_IGEN[Scalar]=0
-Test_AmBash -ge 5.0 && \
-    Scalar::New() {
-        :
-    }
-
-# Object Creation Counters (for unique object ids per `proto`)
-declare -giA __OBJC=()
-
-# Object Registry
-declare -gA __OBJV=()
-
-__OBJC["Proto.Scalar"]=0
-Proto.Scalar() {
-    local scalar="$1:-"
-    local proto="${funcname[0]}"
-    let __OBJC[proto]++
-    local obj="${proto}#${__OBJC[$proto]}"
-    __OBJV[$proto]="$obj"
-    REPLY="$obj"
-}
-
-__OBJC[customobj]=0
-proto.customobj() {
-    Set-Reply "${__OBJV[$self]}"
-}
-
-New-CustomObj() {
-    local -n var="$1" val="${2:-}"
-    let __OBJC++
-    var="customobj#${__OBJC}"
-    __OBJV[$var]="$val"
-}
-
-#------------------------------------------------------------------------------
-#     .
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
-#
-
-Test_AmBash && Initialize-InteractiveShellOptions() {
-        builtin local opt
-        builtin shopt -s \
-                no_empty_cmd_completion cdspell cmdhist dotglob extglob
-        for opt in \
-            show-all-if-ambiguous completion-ignore-case colored-stats \
-            completion-map-case blink-matching-paren visible-stats      \
-            mark-symlinked-directories colored-completion-prefix
-        do
-            builtin bind "set $opt on"
-        done
-        builtin bind "set completion-prefix-display-length 3"
-        # for opt in page-completions; do
-        #     builtin bind "set $opt off"
-        # done
-    }
-
-[[ -v SHELL_current ]] || builtin declare -g SHELL_current="$0"
-
-# $PROFILE object with members defining initialization files.
-# TODO: add conditions if $SHELL_current is /bin/sh
-: ${PROFILE:=PROFILE}
-
-Test_AmBash && PROFILE.AllUsersCurrentHost   () { Set-Reply "/etc/profile"; }
-Test_AmZsh  && PROFILE.AllUsersCurrentHost   () { Set-Reply "/etc/zprofile"; }
-Test_AmBash && PROFILE.CurrentUserCurrentHost() {
-        local -a profile=(
-            "${HOME}/.bash_profile" "${HOME}/.bash_login" "${HOME}/.profile")
-        local file; for file in "${profile[@]}"; do
-            [[ -r "$file" ]] && Set-Reply "$file" && return 0
-        done
-        Set-Reply "${profile[0]}"
-    }
-Test_AmZsh  && PROFILE.CurrentUserCurrentHost() { __RESULT="${HOME}/.zprofile"   ; }
-Test_AmBash && PROFILE.AllUsersCurrentHostInteractive() { __RESULT="/etc/bashrc" ; }
-Test_AmZsh  && PROFILE.AllUsersCurrentHostInteractive() { __RESULT="/etc/zshrc"  ; }
-Test_AmBash && PROFILE.CurrentUserCurrentHostInteractive() {
-        __RESULT="${HOME}/.bashrc"; }
-Test_AmZsh  && PROFILE.CurrentUserCurrentHostInteractive() {
-        __RESULT="${HOME}/.zshrc"; }
-
-# Ensure PROFILE.AllUsersCurrentHost is sourced.
-_() {
-    $PROFILE.AllUsersCurrentHost
-    local profile
-    Get-Result profile
-    [[ -r "$profile" ]] && {
-        . "$profile"
-        # Reinitialize basic shell options
-        Initialize-MinShellOpts
-    }
-}; _; unset -f _
-
-
-Set-SHELL() {
-    local shell="${1:-${SHELL_current}}" change_update=""
-    case "$ZLASH_SHELL_UPDATE" in
-        never)  Write-Err "ERROR: ZLASH_SHELL_UPDATE is set to 'never'."
-                return 1 ;;
-        once)   change_update="never" ;;
-        always) : ;;
-        *)      Write-Err "ERROR: ZLASH_SHELL_UPDATE has invalid value!"
-                return 1 ;;
-    esac
-
-    if ! Confirm-CommandsExist "$shell"; then
-        Test-ExesExist "ps"
-        shell="$(builtin command ps -p $$ -o comm=)"  # Get the current process name
-        Test-ExesExist "$shell"
-    fi
-
-    [[ -n "$change_update" ]] && ZLASH_SHELL_UPDATE="$change_update"
-    export SHELL="$shell"
-}
-
-# case "$ZLASH_SHELL_UPDATE" in
-#     always|once) Set-SHELL ;;
-# esac
-
-
-###############################################################################
-#
-#   Naming Convention
-#
-
-# module.function
-# module.class.staticmethod
-# $object.method
-declare -g FUNC_NS_DELIMITER='.'
-
-# module.class^method
-declare -g OBJECT_DELIMITER='^'
-
-# module:globalvar
-# module.class:classvar
-# module.class:^objfield
-# module.class^method:param
-# $obj:field
-declare -g FIELD_DELIMITER=':'
-
-# module.class@objid
-declare -gr INSTANCE_ID_DELIMITER='@'
-
-declare -gi      OBJECT_COUNTER=0
-declare -ga             OBJECTS=()           # (        [id]=objname              )
-declare -gA         INHERITANCE=()       # (   [objname]="objname objname ...")
-declare -gA             MEMBERS=()           # (   [objname]="membername ..."     )
-declare -gA        MEMBER_TYPS=()      # ([membername]="type"               )
-
-# TODO
-Class.New() {
-    local -n name=$1
-}
-
-Test_AmBash && New-List() {
-    local name="$1"
-    local -n ref="$name"
-    ref=("${@:2}")
-}
-
-Remove-EnvVarItem() {
-    local ITEM="${1}" VARNAME="${2:-PATH}" DELIMITER="${3:-:}"
-    typeset -n VARNAME
-    Set-LocalNoGlob
-    VARNAME="$(
-        IFS=$DELIMITER
-        [ -v VARNAME ] && ITEMS=("$VARNAME") || ITEMS=()
-        for i in ${!ITEMS[@]}; do
-            [ "${ITEMS[i]}" = "$ITEM" ] && unset ITEMS[i]; done
-        echo "${ITEMS[*]}"
-    )"
-}
-
-Add-EnvVarItem() {
-    local ITEM="${1}" VARNAME="${2:-PATH}" DELIMITER="${3:-:}"
-    export "${VARNAME}"="$(
-        set -f
-        IFS=$DELIMITER
-        SEEN=false
-        declare -p "$VARNAME" &>/dev/null && ITEMS=(${!VARNAME}) || ITEMS=()
-        for i in ${!ITEMS[@]}; do
-            [ "${ITEMS[i]}" = "$ITEM" ] && SEEN=true; done
-        $SEEN || ITEMS+=("$ITEM")
-        echo "${ITEMS[*]}"
-    )"
-}
-
-Push-EnvVarItem() {
-    local ITEM="${1}" VARNAME="${2:-PATH}" DELIMITER="${3:-:}"
-    export "${VARNAME}"="$(
-        set -f
-        IFS=$DELIMITER
-        declare -p "$VARNAME" &>/dev/null && ITEMS=(${!VARNAME}) || ITEMS=()
-        for i in ${!ITEMS[@]}; do
-            [ "${ITEMS[i]}" = "$ITEM" ] && unset ITEMS[i]; done
-        ITEMS=("$ITEM" ${ITEMS[@]})
-        echo "${ITEMS[*]}"
-    )"
-}
-
-Repair-EnvVarItems() {
-    local VARNAME="${1}" PRIORITY_VARNAME="${2:-}" DELIMITER="${3:-:}"
-    export "${VARNAME}"="$(
-        set -f
-        IFS=$DELIMITER
-        declare -p "$VARNAME" &>/dev/null && VAR=(${!VARNAME}) || VAR=()
-        declare -p "$PRIORITY_VARNAME" &>/dev/null && \
-            PRIORITY_VAR=(${!PRIORITY_VARNAME}) || \
-            PRIORITY_VAR=()
-        ITEMS=(${PRIORITY_VAR[@]} ${VAR[@]})
-        LEN=${#ITEMS[@]}
-        for i in ${!ITEMS[@]}; do
-            for (( j = 1 + i ; j < LEN ; j++ )); do
-                [ "${ITEMS[i]}" = "${ITEMS[j]}" ] && unset ITEMS[j]; done
-        done
-        echo "${ITEMS[*]}"
-    )"
-}
-
-Repair-PATH() {
-    Repair-EnvVarItems PATH PATH_PRIORITY
-}
-
-Register-ImportableEnv() {
-    Add-EnvVarItem "${1}" ImportableEnvs
-}
-
-Import-ExitCodes() {
-    declare -gA EXIT_CODE_MAPPING=(
-        [0]="SUCCESS"
-        [1]="FAILURE"
-        [2]="SHELL_BUILTIN_MISUSE"
-        [124]="RETRY_COMPLETION"
-        [126]="COMMAND_NOT_EXECUTABLE"
-        [127]="COMMAND_NOT_FOUND"
-    )
-    _() { # Add shell signals
-        local -a sig
-        sig=("$(kill -l)")
-        local -i len=${#sigs[@]} offset=129
-        [[ "${sig[0]}" == [0-9]* ]] && for ((i=0; i<len; i++)); do
-            unset sig[i*2]; done
-        len=${#sig[@]}
-        for ((i=0; i<len; i++)); do
-            [[ "${sig[i]}" != SIG* ]] && sig[i]="SIG${sig[i]}"
-            EXIT_CODE_MAPPING[$offset]="${sig[i]}"
-            let offset++
-        done
-    }; _
-    _() { # Add from sysexits.h
-        local -a sysexit=(
-            USAGE DATAERR NOINPUT NOUSE NOHOST UNAVAILABLE SOFTWARE OSERR
-            OSFILE CANTCREAT IOERR TEMPFAIL PROTOCOL NOPERM CONFIG
-        )
-        local -i len=${#sysexit[@]} offset=64
-        for ((i=0; i<len; i++)); do
-            EXIT_CODE_MAPPING[$offset]="${sysexit[i]}"
-            let offset++
-        done
-    }; _; unset -f _
-}
-
-# export BASH_SILENCE_DEPRECATION_WARNING=1
-
-export DOTNET_CLI_TELEMETRY_OPTOUT=1
-export POWERSHELL_TELEMETRY_OPTOUT=1
-
-Register-ImportableEnv Import-NixEnv
-Import-NixEnv() {
-    [ -v 'NIX_PROFILES' ] && \
-        .  /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-}
-
-Register-ImportableEnv Import-GhcUpEnv
-Import-GhcUpEnv() {
-    [[ "${PATH}:" != *"/.cabal/bin:"* || "${PATH}:" != *"/.ghcup/bin:"* ]] && \
-        [ -d "${GHCUP_INSTALL_BASE_PREFIX:=HOME}/.ghcup" ] && \
-        .    "${GHCUP_INSTALL_BASE_PREFIX}/.ghcup/env"
-}
-
-Register-ImportableEnv Import-JavaHomeEnv
-Import-JavaHomeEnv() {
-    export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home)}"
-}
-
-Register-ImportableEnv Import-PerlEnv
-Import-PerlEnv() {
-    { [ -z "${PERL_MB_OPT}" ] || [ -z "${PERL_MM_OPT}" ]; } && \
-        . <(/usr/bin/perl -I "${HOME}/perl5/lib/perl5/" -Mlocal::lib)
-}
-
-
-export PSModulePath="${PSModulePath:-${HOME}/pwsh}"
-
-export CONDA_PREFIX="${CONDA_PREFIX:-${HOME}/opt/anaconda3}"
-
-# [[ ":$PATH:" != *":${HOME}/.console-ninja/.bin:"* ]] && \
-#     export PATH="${HOME}/.console-ninja/.bin:${PATH}:$PATH"
-
-export PODMAN_MACOS_CFG="${PODMAN_MACOS_CFG:-${HOME}/\
-.config/containers/podman/machine/qemu/podman-machine-default.json}"
-
-Register-ImportableEnv Import-HomeBinEnv
-Import-HomeBinEnv() {
-    export HOMEBREW_NO_ANALYTICS=1
-    [ -d "${HOME}/bin" ] && {
-        Push-EnvVarItem "${HOME}/bin" PATH_PRIORITY
-        Push-EnvVarItem "${HOME}/bin" PATH
-
-        [ -x "${HOME}/bin/te" ] && \
-            export EDITOR="${EDITOR:=${HOME}/bin/te}"
-
-        [ -x "${HOME}/bin/ve" ] && \
-            export VISUAL="${VISUAL:=${HOME}/bin/ve}"
-    } || \
-        echo "WARNING: Not found: ${HOME}/bin" >2
-}
-
-declare -ga INCLUDE_DIRS_CACHE=()
-
-Test_AmBash && Find-HeaderFile() {
-    : # TODO
-    local filename="$1"
-    Use-BeforeReturnHook
-    if [[ "${#INCLUDE_DIRS_CACHE[@]}" -eq 0 ]]; then
-        if Confirm-CommandsExist gcc; then
-            local line
-            while read -r line; do
-                :
-            done; <(
-                IFS=$'\n'
-                builtin command gcc -Wp,-v -E - < /dev/null 2>&1
-            )
-        else
-                : # TODO
-        fi
-    fi
-}
-
-Test_AmBash && Import-BashCompletions() {
-        [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] \
-            && . "/usr/local/etc/profile.d/bash_completion.sh"
-    }
-
-alias c=type
-
-cd() {
-    pushd "${1:-${HOME}}"
-}
-
-alias qp=Convert-PipeToShQuote
-Convert-PipeToShQuote() {
-    local IFS input
-    [ $# -gt 0 ] && IFS="$1"
-    builtin read -s -r -d '' -a input
-    echo "${input[@]@Q}"
-}
-
-alias qa=Convert-ArgsToShQuote
-Convert-ArgsToShQuote() {
-    echo "${@@Q}"
-}
-
-alias mc=Measure-Command
-Measure-Command() {
-    local cmd=("$@")
-    local qcmd=()
-    local TIMEFORMAT="%3Rs ""$@"
-    time "$@"
-}
-
-Import-NerdFontEnv() {
-    . "${HOME}/bin/bash/i_all.sh"
-}
-
-Test-AmMacOS && Test_AmBash && Import-BrewEnv() {
-    export HOMEBREW_NO_ANALYTICS=1
-    . <(brew shellenv bash)
-    Test-AmUserControlled && {
-        if type brew &>/dev/null
-        then
-            local brew
-            brew="$(brew --prefix)"
-            if [[ -r "${brew}/etc/profile.d/bash_completion.sh" ]]; \
-            then
-                . "${brew}/etc/profile.d/bash_completion.sh"
-            else
-                for COMPLETION in "${brew}/etc/bash_completion.d/"*; do
-                    [[ -r "${COMPLETION}" ]] && source "${COMPLETION}"
-                done
-            fi
-        fi
-    }
-}
-
-Import-JenvEnv() {
-    . <(jenv init -)
-}
-
-Import-PyenvEnv() {
-    export PYENV_ROOT="${PYENV_ROOT:-${HOME}/.pyenv}"
-    . <(pyenv init -)
-}
-
-Import-VirtualenvEnv() {
-    . <(pyenv virtualenv-init -)
-}
-
-
-_compat_test_am_bash && Import-CondaEnv() {
-    . <("${CONDA_PREFIX}/bin/conda" shell.bash hook)
-}
-_compat_test_am_zsh && Import-CondaEnv() {
-    . <("${CONDA_PREFIX}/bin/conda" shell.zsh hook)
-}
-
-Import-DirenvEnv() {
-    . <(direnv hook bash)
-}
-
-Import-GCloudEnv() {
-    . "${HOME}/google-cloud-sdk/path.bash.inc"
-}
-
-Import-ModulesEnv() {
-    . /usr/local/opt/modules/init/bash
-}
-
-Import-UtilLinuxEnv() {
-    # If you need to have util-linux first in your PATH, run:
-    # echo 'export PATH="/usr/local/opt/util-linux/bin:$PATH"' >> ~/.zshrc
-    # echo 'export PATH="/usr/local/opt/util-linux/sbin:$PATH"' >> ~/.zshrc
-
-    # For compilers to find util-linux you may need to set:
-    # export LDFLAGS="-L/usr/local/opt/util-linux/lib"
-    # export CPPFLAGS="-I/usr/local/opt/util-linux/include"
-
-    # For pkg-config to find util-linux you may need to set:
-    # export PKG_CONFIG_PATH="/usr/local/opt/util-linux/lib/pkgconfig"
-    :
-}
-
-
-FzfHistory.Import() {
-    if Test-ExesExist fsf
-    then
-        bind '"\C-r": "\C-x1\e^\er"'
-        bind -x '"\C-x1": FzfHistory.completer';
-    fi
-}
-FzfHistory.completer() {
-    local history
-    history="$(builtin history \
-                | fzf --tac --tiebreak=index \
-                | perl -ne 'm/^\s*([0-9]+)/ and print "!$1"' \
-            )"
-    if [[ -n "$history" ]]; then
-        bind '"\er": redraw-current-line'
-        bind '"\e^": magic-space'
-        local -a readline
-        readline=(
-            "${READLINE_LINE:+${READLINE_LINE:0:READLINE_POINT}}"
-            "$1"
-            "${READLINE_LINE:+${READLINE_LINE:READLINE_POINT}}"
-        )
-        Join-Array "" readline
-        READLINE_LINE="$__RESULT"
-        READLINE_POINT=$(( READLINE_POINT + ${#1} ))
-    else
-        bind '"\er":'
-        bind '"\e^":'
-    fi
-}
-
-Repair-PATH
-
-# TODO
-Find-ExeDirs() {
-    find / -maxdepth 3 -type d ! -path "/nix/store/*" -exec sh -c '
-        for dir; do
-            count=$(find "$dir" -maxdepth 1 -type f -perm -u+x | wc -l)
-            [ "$count" -gt 0 ] && echo "$count $dir"
-        done' _ {} + 2>/dev/null
 }

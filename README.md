@@ -1,2 +1,4 @@
-# zlash
-Zero-install adaptive structured shell
+# Zlash
+Zero-install logical adaptive structured shell
+
+Heavy WIP
