@@ -468,7 +468,7 @@ _zlsh_prtbl_check_sanity() {
                 &&    true                     \
                                                 \
                 && CHECK arithmetic context boolean logic translation \
-                &&  ! let 0 && let 1 && let 2 && let '-1' && let '-2'  \
+                &&  ! let 0 && let 1 && let 2 && let -- -1 && let -- -2\
                                                                         \
                 && CHECK test-\[ equivalence         \
                 &&    test 1 && test 0 && ! test ''   \
