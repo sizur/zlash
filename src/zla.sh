@@ -424,8 +424,8 @@ zlash_prtbl_check_sanity() {
 #         (`alias`  utilization is needed to relax invocation syntax)
 #
 #       - Ksh93 does not restore command assignments after `var=val cmd`
-#         execution. This behavior is POSIX-compliant, since it is specified as
-#         "unspecified".
+#         execution. This behavior is POSIX-compliant, since it is specified in
+#         the standard as "unspecified".
 #         (`typeset` in `function name {...}` scoped variables local to function
 #          evaluation properly, without risk of collisions like in Bash/Zsh)
 #
@@ -439,7 +439,13 @@ zlash_prtbl_check_sanity() {
 #          as `var="$(cmdB | cmdA)"`)
 #
 #       - Dash has no `let` command.
-#         (`: $((...))` can be used instead)
+#         (`: $((...))` can be used for arithmetic assignment expressions
+#          evaluation, or `[ $((...)) -ne 0 ]` for boolean arithmetic evaluation
+#          translated to shell's success/failure; extra precautions must be
+#          taken if these forms are evaluated by a shell that's capable of at
+#          least indexed arrays (not Dash), since subscripts in arithmetic
+#          context are expanded recursively, so pose code injection
+#          vulnerability if not controlled or sanitized)
 #
 _zlsh_prtbl_check_sanity() {
     _zlsh_tmp_pass()    { return 0; }
