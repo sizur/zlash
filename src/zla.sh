@@ -198,7 +198,7 @@
 #
 # Zsh is an exception here. It even handles pattern matching over binary data:
 #
-# > $ [[ $var == *$'\0cd' ]] && echo ok || echo failed
+# > $  [[ $var == *$'b\0ce' ]] || { [[ $var == *$'b\0cd' ]] && echo ok }
 # > ok
 #
 # There are two workarounds, with very different semantics:
