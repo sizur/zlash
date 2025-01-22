@@ -424,8 +424,8 @@ zlash_prtbl_check_sanity() {
 #         (`alias`  utilization is needed to relax invocation syntax)
 #
 #       - Ksh93 does not restore command assignments after `var=val cmd`
-#         execution. This behavior is POSIX-compliant, since it is specified in
-#         the standard as "unspecified".
+#         execution. This behavior is POSIX-compliant, since the standard has it
+#         specified as "unspecified".
 #         (`typeset` in `function name {...}` scoped variables local to function
 #          evaluation properly, without risk of collisions like in Bash/Zsh)
 #
