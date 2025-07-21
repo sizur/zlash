@@ -82,10 +82,9 @@ ___
 Roadmap
 =======
 
-- [x] POSIX Shell sanity-check of bare-minimum portable functionality
-      ([](./src/init_sanity.sh))
-- [x] Portable core input validation functions ([](./src/core_validators.sh])
-- [x] Portable shell string quotation for reuse ([](./src/core_shell_quoting.sh])
-- [x] Portable string matching ([](./src/core_str_matching.sh])
-- [x] Dev env dependency management ([](./src/_dev.sh])
+- [x] [POSIX Shell sanity-check of bare-minimum portable functionality](src/init_sanity.sh)
+- [x] [Portable core input validation functions](src/core_validators.sh)
+- [x] [Portable shell string quotation for reuse](src/core_shell_quoting.sh)
+- [x] [Portable string matching](src/core_str_matching.sh)
+- [x] [Dev-env dependency management](src/_dev.sh)
 
