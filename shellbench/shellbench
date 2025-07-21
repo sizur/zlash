@@ -1,6 +1,8 @@
 #!/bin/sh
 # shellcheck disable=SC2004,SC2016
 
+# From: https://github.com/shellspec/shellbench
+
 set -eu
 
 SHELLS=${SHELLBENCH_SHELLS:-sh}

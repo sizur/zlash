@@ -1,8 +1,0 @@
-You might see \f[B]bold\f[] and \f[I]italic\f[].
-Some people see \f[BI]both\f[].
-If the output device does (not) co\z\[ad]operate,
-you might see \m[red]red\m[].
-Black on cyan can have a \M[cyan]\m[black]prominent\m[]\M[]
-\D'l 1i 0'\D'l 0 2i'\D'l 1i 0' look.
-.\" If in nroff mode, end page now.
-.if n .pl \n[nl]u
