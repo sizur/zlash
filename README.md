@@ -6,7 +6,7 @@ Zero-install logical adaptive structured shell
 Project Goals
 =============
 
-Launch any *POSIX-compatible*^1^ shell, including remote sessions. By sourcing
+Launch any *POSIX-compatible*¹ shell, including remote sessions. By sourcing
 this file — whether manually or auto-forwarded from another shell instance —
 you unlock advanced interactive features. These include structured objects,
 object pipelines, binary data processing, custom class definitions, advanced
@@ -23,9 +23,9 @@ ___
 Project Motivation
 ==================
 
-The increasing popularity and proliferation of modern interactive shells^1^,
-terminal emulators^2^, and a large number of new, high-quality CLI/TUI
-tools/apps^3^ is a proof of a need that a GUI cannot fulfill generally. That
+The increasing popularity and proliferation of modern interactive shells¹,
+terminal emulators², and a large number of new, high-quality CLI/TUI
+tools/apps³ is a proof of a need that a GUI cannot fulfill generally. That
 need is the expressive power and replicability that an interactive
 command-line provides.
 
@@ -78,4 +78,14 @@ ___
 3. See:
    [awesome-cli-apps-in-a-csv](https://github.com/toolleeo/awesome-cli-apps-in-a-csv)
    (Searching the page for "Rust" gives 50+ results.)
+
+Roadmap
+=======
+
+- [x] POSIX Shell sanity-check of bare-minimum portable functionality
+      ([./src/init_sanity.sh]())
+- [x] Portable core input validation functions ([./src/core_validators.sh]())
+- [x] Portable shell string quotation for reuse ([./src/core_shell_quoting.sh]())
+- [x] Portable string matching ([./src/core_str_matching.sh]())
+- [x] Dev env dependency management ([./src/_dev.sh]())
 
