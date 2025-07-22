@@ -83,8 +83,16 @@ Roadmap
 =======
 
 - [x] [POSIX Shell sanity-check of bare-minimum portable functionality](src/init_sanity.sh)
-- [x] [Portable core input validation functions](src/core_validators.sh)
-- [x] [Portable shell string quotation for reuse](src/core_shell_quoting.sh)
-- [x] [Portable string matching](src/core_str_matching.sh)
+- [x] [Core input validation functions](src/core_validators.sh)
+- [x] [Shell string quotation for reuse](src/core_shell_quoting.sh)
+- [x] [String matching](src/core_str_matching.sh)
 - [x] [Dev-env dependency management](src/_dev.sh)
+- [50%] [Core Attributes](src/core_attrs.sh)
+- [0%] Core Objects
+- [75%] [String operations](src/core_str_ops.sh)
+- [50%] [Math](src/core_math.sh)
+- [x] [PN-Counters](str/core_pncounters.sh)
+- [x] [Stacks](src/core_stack.sh)
+- [0%] Iterators
+
 
